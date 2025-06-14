@@ -112,6 +112,24 @@ function NavBar() {
   // Render the dropdown menu for recording selection (if more than 1 recording exists).
   // All .map and child paths return only renderable primitives or JSX elements (never a bare object/array).
   function renderRecordingDropdown() {
+    // Debug: Log the type and contents of recordings just before render
+    if (window && window.__REACT_RENDERING_LOG__ !== false) {
+      try {
+        // Only prints if the dev sets window.__REACT_RENDERING_LOG__ !== false in console
+        // eslint-disable-next-line no-console
+        console.log(
+          "[DEBUG] renderRecordingDropdown recordings:",
+          Array.isArray(recordings) ? recordings.map((r, i) => ({
+            idx: i,
+            type: typeof r,
+            isArray: Array.isArray(r),
+            isJSX: r && typeof r === "object" && r.$$typeof ? true : false,
+            keys: r && typeof r === "object" ? Object.keys(r) : null,
+            value: r
+          })) : recordings
+        );
+      } catch (e) {}
+    }
     // Only show the dropdown if there's >1 valid recording entry.
     if (!Array.isArray(recordings) || recordings.length <= 1) return null;
 
@@ -265,6 +283,20 @@ function NavBar() {
   // Render content inside the recordings modal - returns only valid JSX or primitives.
   // All code paths (null, malformed, embed error, etc) provide robust fallback UI.
   function renderModalContent() {
+    // DEBUG: log selection type and value before branch
+    if (window && window.__REACT_RENDERING_LOG__ !== false) {
+      try {
+        // eslint-disable-next-line no-console
+        console.log(
+          "[DEBUG] renderModalContent selectedRecording:",
+          selectedRecording,
+          "type:",
+          typeof selectedRecording,
+          "isArray:", Array.isArray(selectedRecording),
+          "isJSX:", selectedRecording && typeof selectedRecording === "object" && selectedRecording.$$typeof ? true : false
+        );
+      } catch (e) {}
+    }
     try {
       // Top-level fallback for no/invalid selection
       if (
@@ -335,7 +367,7 @@ function NavBar() {
           : "";
 
       // Main block: All components here are React elements or valid renderable content
-      return (
+      const modalContent = (
         <>
           <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
             <iframe
@@ -386,6 +418,14 @@ function NavBar() {
           </div>
         </>
       );
+      // Log what is being returned explicitly
+      if (window && window.__REACT_RENDERING_LOG__ !== false) {
+        try {
+          // eslint-disable-next-line no-console
+          console.log("[DEBUG] renderModalContent returning modalContent as type:", typeof modalContent, modalContent);
+        } catch (e) {}
+      }
+      return modalContent;
     } catch (ex) {
       // Fallback if render throws for any reason: always a visible error block (never a raw object/array)
       return (
