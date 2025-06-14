@@ -1,0 +1,4 @@
+{
+    "command": "psql -h localhost -U appuser -d myapp -p 5432 -c \"SELECT version();\"",
+    "working_directory": "/home/kavia/workspace/code-generation/singsphere-35690-ae80a071/singstreamdb"
+}
