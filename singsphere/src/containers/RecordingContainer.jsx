@@ -67,6 +67,14 @@ function saveRecordingToLocal(songId, title, karaokeYoutubeUrl) {
 // PUBLIC_INTERFACE
 function RecordingContainer({ songId, title, youtubeUrl }) {
   // Karaoke video mapping for specific songs
+  /**
+   * Map song IDs and titles to karaoke YouTube URLs.
+   * NOTE: When extending song support, add both the string title and numeric ID if required.
+   * This structure allows supporting both:
+   *   - RecordingContainer({ songId: "2", ... }) maps via key "2"
+   *   - RecordingContainer({ title: "Pirai Thedum Iravile", ... }) maps via full song title
+   * (Enables lookup if routing navigation passes songId or only the title.)
+   */
   const SONG_KARAOKE_VIDEO_MAP = {
     "1": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // Blinding Lights by The Weeknd
     "Blinding Lights": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO",

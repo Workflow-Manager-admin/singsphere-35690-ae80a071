@@ -123,7 +123,7 @@ function NavBar() {
         >
           {recordings.map((rec, i) => (
             <button
-              key={rec.recordedAt + (rec.songId ?? '')}
+              key={(rec.recordedAt || "") + (rec.songId ?? "") + "_" + i}
               className="btn"
               style={{
                 display: "block",
@@ -143,12 +143,12 @@ function NavBar() {
               tabIndex={0}
             >
               <div>
-                {rec.title || "Untitled"}
-                {rec.artist && (
+                {typeof rec.title === "string" ? rec.title : "Untitled"}
+                {rec.artist && typeof rec.artist === "string" ? (
                   <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
                     by {rec.artist}
                   </span>
-                )}
+                ) : null}
               </div>
               <div style={{ fontSize: ".93em", color: "#53ffee" }}>
                 Saved: {rec.recordedAt ? new Date(rec.recordedAt).toLocaleString() : ""}
@@ -163,25 +163,26 @@ function NavBar() {
   // Render modal recording details, or YouTube fallback UI
   function renderModalContent() {
     if (!selectedRecording || !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)) {
-      return (
-        <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
-          {recordings.length === 0
-            ? (<>
-              No previous recording found.<br />
-              <Link to="/record" className="btn btn-large" onClick={handleModalClose}>
-                Start Recording
-              </Link>
-            </>)
-            : (
-              <>
-                Could not embed YouTube video for this recording.
-                <br />
-                {selectedRecording && selectedRecording.karaokeYoutubeUrl && !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl) &&
-                  <span style={{ color: "#FFA500" }}>Invalid YouTube URL.</span>}
-              </>
-            )}
-        </div>
-      );
+      // Only strings, JSX, and primitive types allowed. No object/array as root child; flatten logic.
+      if (recordings.length === 0) {
+        return (
+          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
+            No previous recording found.<br />
+            <Link to="/record" className="btn btn-large" onClick={handleModalClose}>
+              Start Recording
+            </Link>
+          </div>
+        );
+      } else {
+        return (
+          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
+            Could not embed YouTube video for this recording.<br />
+            {selectedRecording && selectedRecording.karaokeYoutubeUrl && !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl) ? (
+              <span style={{ color: "#FFA500" }}>Invalid YouTube URL.</span>
+            ) : null}
+          </div>
+        );
+      }
     }
     // Recording exists and has valid YT URL
     return (
