@@ -232,7 +232,7 @@ function NavBar() {
                       console.log(`[TRACE-RENDER] (recordings.map) Returning <button> for index ${i}, key: ${keyParts.join("_")}`, { title, artist, isSelected }); 
                     } catch(e){}
                   }
-                  return (
+                  const elem = (
                     <button
                       key={keyParts.join("_")}
                       className="btn"
@@ -274,6 +274,24 @@ function NavBar() {
                       </div>
                     </button>
                   );
+                  // Additional runtime "paranoia" check: if not string/number/boolean/JSX, forcibly wrap in span
+                  if (
+                    elem != null &&
+                    typeof elem !== "string" &&
+                    typeof elem !== "number" &&
+                    typeof elem !== "boolean" &&
+                    // If not a valid React element (should be!); wrap as <span>
+                    !(elem.$$typeof && typeof elem.$$typeof === "symbol")
+                  ) {
+                    if (window && window.__REACT_RENDERING_LOG__ !== false) {
+                      try {
+                        // eslint-disable-next-line no-console
+                        console.warn("[DEFENSIVE] .map returned non-ReactElement, wrapping with <span>.", elem);
+                      } catch(e){}
+                    }
+                    return <span key={`defensive_wrap_${i}`}>{JSON.stringify(elem)}</span>;
+                  }
+                  return elem;
                 } catch (err) {
                   if (window && window.__REACT_RENDERING_LOG__ !== false) {
                     try { 
@@ -565,14 +583,21 @@ function NavBar() {
                 console.error("[RUNTIME ERROR] Attempted to render a plain object as a React child in modal. Rendering fallback.", modalContent);
               } catch (e) {}
             }
+            // Always wrap fallback with a fragment, never a direct object
             return (
-              <div style={{ color: "#f00", textAlign: "center", padding: 18 }}>
-                Internal error: Attempted to render a non-JSX object. Please reload or contact support.<br />
-                <small>(Defensive fallback fired)</small>
-              </div>
+              <React.Fragment>
+                <div style={{ color: "#f00", textAlign: "center", padding: 18 }}>
+                  Internal error: Attempted to render a non-JSX object. Please reload or contact support.<br />
+                  <small>(Defensive fallback fired)</small>
+                </div>
+              </React.Fragment>
             );
           }
           // Otherwise, render as normal (primitives, array of JSX, or valid React element)
+          // If modalContent is an array of objects, wrap in fragment to guarantee no bare object
+          if (Array.isArray(modalContent)) {
+            return <React.Fragment>{modalContent}</React.Fragment>;
+          }
           return modalContent;
         })()}
       </ReactModal>
