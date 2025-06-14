@@ -6,31 +6,33 @@ import { useState, useEffect, useRef } from 'react';
 
 import ReactModal from 'react-modal';
 
-/**
+/*
  * PUBLIC_INTERFACE
  * The NavBar component handles persistent navigation, user recording history modal/dropdown,
- * and the karaoke embed logic. All .map and render conditionals are defensively written
- * to guarantee that **only valid JSX elements or renderable primitives** are ever rendered.
- *
- * Defensive type guards, explicit null/undefined handling, and try/catch-wrapped rendering ensure
- * that neither the modal/dropdown nor embed code ever produces arrays or bare objects as children for React.
- *
- * Fallback UI (user-friendly warnings/actions) is always rendered in empty/null/malformed states.
- * All non-trivial .map or embed logic has careful documentation. DO NOT relax these checks or return
- * plain objects/arrays in future code — such code will break React rendering and modal logic!
+ * and the karaoke embed logic. All .map and render conditionals are defensively written.
+ * 
+ * STRICT RULE:
+ *   - Every mapping or render function always returns valid JSX elements or renderable React primitives,
+ *     never a bare object, array, or undefined.
+ *   - If input data is empty, null, or malformed, a clear fallback UI is rendered with
+ *     a user-friendly action or error state.
+ * 
+ * This file comes with explicit documentation for all edge cases and render logic.
+ * MAINTAINERS: If you modify any .map or list block here, check that no array/object
+ * is ever returned directly inside JSX. You must provide a fallback for *every* null/empty/malformed path.
  */
 function NavBar() {
-  // State for user recordings, recording modal UI, and the currently selected recording
+  // State: list of user karaoke recordings, modal UI, currently selected recording
   const [recordings, setRecordings] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedRecording, setSelectedRecording] = useState(null);
 
   // PUBLIC_INTERFACE
-  // Helper: Find the most recent valid YouTube recording from an array
-  // Always returns either a valid recording object or null (never an array/object that is not a recording)
+  // Gets the most recent valid recording from the data array, or null if none valid.
+  // Returns either a valid recording object or null (never an array/object that isn't a recording).
   function getLatestRecording(allRecs) {
     if (!Array.isArray(allRecs)) return null;
-    // Defensive: filter to objects with valid karaokeYoutubeUrl
+    // Defensive: sort and filter for only objects with valid karaokeYoutubeUrl (as a string starting with http)
     const sorted = [...allRecs].sort(
       (a, b) => new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0)
     );
@@ -107,15 +109,19 @@ function NavBar() {
     setShowModal(true);
   }
 
-  // Render Recording button drop-down, if more than 1 recording
+  // Render the dropdown menu for recording selection (if more than 1 recording exists).
+  // All .map and child paths return only renderable primitives or JSX elements (never a bare object/array).
   function renderRecordingDropdown() {
-    // Defensive guard for sanity: never render if not >1 valid recording
+    // Only show the dropdown if there's >1 valid recording entry.
     if (!Array.isArray(recordings) || recordings.length <= 1) return null;
 
-    // TRICKY: The callback to .map must always yield only valid JSX or string/primitive.
-    // - We never return a plain object/array.
-    // - If any row is malformed or an error occurs, renders a yellow warning <div>.
-    // - This is CRITICAL: never push anything non-renderable!
+    /**
+     * Each mapped value in the dropdown is explicitly validated:
+     *    - If a row is not an object, a warning <div> is rendered.
+     *    - If a mapping callback throws, an error <div> is rendered for that row.
+     *    - All normal rows return a button; keys are stringified and unique.
+     *    - If the input array is empty or null, a fallback UI is shown.
+     */
     return (
       <div style={{ position: "relative", display: "inline-block" }}>
         <button
@@ -123,7 +129,7 @@ function NavBar() {
           className="btn"
           style={{ minWidth: 110 }}
           title="Open your past recordings"
-          // Always open the modal
+          // Always opens the modal
           onClick={(e) => setShowModal(true)}
           tabIndex={0}
         >
@@ -144,16 +150,13 @@ function NavBar() {
           }}
         >
           {
-            // Only map if valid array and not empty; fallback otherwise.
-            Array.isArray(recordings) && recordings.length > 0
-              ?
+            // Array guard: Only .map if array is valid, else fallback JSX
+            Array.isArray(recordings) && recordings.length > 0 ?
               recordings.map((rawRec, i) => {
-                // Defensive: always return only JSX or string/primitive in this callback.
-                // No arrays, no plain objects.
+                // Defensive guarantee: always return valid React element or primitive
                 try {
-                  // Guard: Only process if rawRec is an object (non-null)
+                  // Only objects (not null) are allowed; all others yield a fallback.
                   if (typeof rawRec !== "object" || rawRec === null) {
-                    // Malformed: fallback warning, but always JSX element.
                     return (
                       <div
                         key={`malformed_${i}`}
@@ -168,7 +171,7 @@ function NavBar() {
                       </div>
                     );
                   }
-                  // Defensive: coerce .title and .artist for safe text display/render
+                  // Always coerce title/artist for safe text
                   let title = "Untitled";
                   if (typeof rawRec.title === "string") title = rawRec.title;
                   else if (rawRec.title !== undefined) title = String(rawRec.title);
@@ -177,18 +180,19 @@ function NavBar() {
                   if (typeof rawRec.artist === "string") artist = rawRec.artist;
                   else if (rawRec.artist !== undefined) artist = String(rawRec.artist);
 
-                  // Compute a unique key for React rendering (safe-to-string)
+                  // Compose a unique React key
                   const keyParts = [
                     rawRec && rawRec.recordedAt ? String(rawRec.recordedAt) : "",
                     rawRec && rawRec.songId ? String(rawRec.songId) : "",
                     i,
                   ];
-                  // Highlight if this is the currently selected recording
+                  // Highlight selection for UX clarity
                   const isSelected =
                     selectedRecording && rawRec &&
                     selectedRecording.recordedAt === rawRec.recordedAt &&
                     selectedRecording.songId === rawRec.songId;
-
+                  
+                  // Only return a button element or fallback, never an array/object
                   return (
                     <button
                       key={keyParts.join("_")}
@@ -232,7 +236,7 @@ function NavBar() {
                     </button>
                   );
                 } catch (err) {
-                  // Any catch: show error fallback (renderable, not object)
+                  // Catch-all rendering error for a row: always error-fallback JSX
                   return (
                     <div
                       key={`errorrow_${i}`}
@@ -247,33 +251,29 @@ function NavBar() {
                     </div>
                   );
                 }
-              })
-              :
-              // Fallback: No recordings available—always render a JSX div
-              (
-                <div style={{ padding: "15px 0", color: "#ffa500", textAlign: "center" }}>
-                  No recordings found.
-                </div>
-              )
+              }) :
+              // If empty recordings, always render a visible fallback.
+              <div style={{ padding: "15px 0", color: "#ffa500", textAlign: "center" }}>
+                No recordings found.
+              </div>
           }
         </div>
       </div>
     );
   }
 
-  // Render modal content for a recording: always return JSX/primitives.
-  // Includes robust fallback blocks for empty/malformed/null.
+  // Render content inside the recordings modal - returns only valid JSX or primitives.
+  // All code paths (null, malformed, embed error, etc) provide robust fallback UI.
   function renderModalContent() {
     try {
-      // Defensive: If selectedRecording is null/not object/empty, show relevant UI fallback.
+      // Top-level fallback for no/invalid selection
       if (
         !selectedRecording ||
         typeof selectedRecording !== "object" ||
         (Array.isArray(selectedRecording) && selectedRecording.length === 0)
       ) {
-        // No prior recording at all
+        // If there are no recordings, show a friendly action block
         if (!Array.isArray(recordings) || recordings.length === 0) {
-          // No recordings exist -- render a call-to-action block (JSX)
           return (
             <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
               No previous recording found.<br />
@@ -283,7 +283,7 @@ function NavBar() {
             </div>
           );
         }
-        // At least one recording exists but selection is corrupted/null
+        // If some recordings exist but selection is missing/bad, show an error
         return (
           <div style={{ color: "#ffa500", textAlign: "center", padding: 18 }}>
             Error: Recording data could not be loaded.<br />
@@ -292,15 +292,14 @@ function NavBar() {
         );
       }
 
-      // Defensive check for YouTube ID extraction on selectedRecording's karaokeYoutubeUrl (must be a string)
+      // Attempt to extract YouTube ID - always string type check
       const videoId =
         typeof selectedRecording.karaokeYoutubeUrl === "string"
           ? extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)
           : null;
 
-      // If not a valid video id, fallback to an error block (never render a raw object or array)
+      // If YouTube ID is invalid, fallback UI
       if (!videoId) {
-        // Always JSX fallback for invalid/malformed YouTube embedding
         return (
           <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
             Could not embed YouTube video for this recording.<br />
@@ -309,12 +308,12 @@ function NavBar() {
               typeof selectedRecording.karaokeYoutubeUrl === "string" &&
               !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl) ? (
                 <span style={{ color: "#FFA500" }}>Invalid YouTube URL.</span>
-              ) : null}
+            ) : null}
           </div>
         );
       }
 
-      // Defensive: For all displays (title, artist), always coerce to string.
+      // Defensive: For all string displays, coerce or fallback to safe strings
       const safeTitle =
         typeof selectedRecording.title === "string"
           ? selectedRecording.title
@@ -335,8 +334,7 @@ function NavBar() {
             })()
           : "";
 
-      // Karaoke video embed (iframe) and all children strictly return JSX and renderable primitives.
-      // NOTE: NEVER returns a plain object or array, always fragments and elements.
+      // Main block: All components here are React elements or valid renderable content
       return (
         <>
           <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
@@ -389,7 +387,7 @@ function NavBar() {
         </>
       );
     } catch (ex) {
-      // Robust fallback for any rendering bug or broken data: strictly render JSX primitive error UI.
+      // Fallback if render throws for any reason: always a visible error block (never a raw object/array)
       return (
         <div style={{ color: "#ffa500", textAlign: "center", fontSize: "1.07rem", padding: 16 }}>
           Error displaying recording details.<br />
@@ -464,6 +462,7 @@ function NavBar() {
     </>
   );
 }
+
 
 // PUBLIC_INTERFACE
 function Homepage() {
