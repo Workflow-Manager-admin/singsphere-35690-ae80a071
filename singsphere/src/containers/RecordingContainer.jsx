@@ -29,29 +29,60 @@ function extractYouTubeVideoId(url) {
   return null;
 }
 
+/**
+ * Helper function to persist recording metadata in localStorage.
+ * Stores as array under "userRecordings" key (JSON array of objects).
+ * @param {string|number} songId 
+ * @param {string} title 
+ * @param {string} karaokeYoutubeUrl 
+ */
+function saveRecordingToLocal(songId, title, karaokeYoutubeUrl) {
+  if (!songId && !title) return;
+  try {
+    const prev =
+      JSON.parse(localStorage.getItem("userRecordings") || "[]") || [];
+    // Prevent duplicates for same songId or title
+    const existingIdx = prev.findIndex(
+      (rec) =>
+        (rec.songId && songId && rec.songId === songId) ||
+        (rec.title && title && rec.title.toLowerCase() === title.toLowerCase())
+    );
+    const meta = {
+      songId: songId || null,
+      title: title || "",
+      karaokeYoutubeUrl: karaokeYoutubeUrl || "",
+      recordedAt: new Date().toISOString()
+    };
+    if (existingIdx !== -1) {
+      prev[existingIdx] = meta;
+    } else {
+      prev.push(meta);
+    }
+    localStorage.setItem("userRecordings", JSON.stringify(prev));
+  } catch (err) {
+    // localStorage may be full or unavailable; fail silently
+  }
+}
+
+// PUBLIC_INTERFACE
 function RecordingContainer({ songId, title, youtubeUrl }) {
-  // Karaoke video mapping for specific songs (Shape of You, Blinding Lights)
+  // Karaoke video mapping for specific songs
   const SONG_KARAOKE_VIDEO_MAP = {
-    // ID or title
-    "1": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // Blinding Lights by The Weeknd (NEW LINK)
-    "Blinding Lights": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // fallback by title (NEW LINK)
-    "2": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM", // Pirai Thedum Iravile by Saindhavi
+    "1": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // Blinding Lights by The Weeknd
+    "Blinding Lights": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO",
+    "2": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM", // Pirai Thedum Iravile
     "Pirai Thedum Iravile": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM",
-    // Updated mapping for Oru Paadhi Kadhavu Neeyadi
-    "3": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8",
+    "3": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8", // Oru Paadhi Kadhavu Neeyadi
     "Oru Paadhi Kadhavu Neeyadi": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8",
-    // New mapping for Ennai Konjam Maatri
-    "4": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
+    "4": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8", // Ennai Konjam Maatri
     "Ennai Konjam Maatri": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
-    "5": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe mapping
-    "Kaun Tujhe": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe mapping by title
-    // Mapping for Ae Dil Hai Mushkil
-    "6": "https://youtu.be/gsTTKvzRMg4?si=T_t79g_56rFJaJur",
+    "5": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe
+    "Kaun Tujhe": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE",
+    "6": "https://youtu.be/gsTTKvzRMg4?si=T_t79g_56rFJaJur", // Ae Dil Hai Mushkil
     "Ae Dil Hai Mushkil": "https://youtu.be/gsTTKvzRMg4?si=T_t79g_56rFJaJur",
-    "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
+    "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN", // Shape of You
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
-    // Added Sundari Kannal mapping
-    "8": "https://youtu.be/AKDP1cbICN8?si=oq6b-Po4-DgTIz-i",
+    "8": "https://youtu.be/AKDP1cbICN8?si=oq6b-Po4-DgTIz-i", // Sundari Kannal
     "Sundari Kannal Oru Sethi": "https://youtu.be/AKDP1cbICN8?si=oq6b-Po4-DgTIz-i"
   };
 
@@ -113,7 +144,6 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     }
     return () => clearInterval(ytTimeIntervalRef.current);
   }, [isYoutubePlaying, karaokeDuration]);
-  // When new video/recording starts, reset lyric timer
   useEffect(() => {
     setAudioCurrentTime(0);
   }, [youtubeVideoId, isYoutubePlaying]);
@@ -123,7 +153,6 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
   function playYouTubeVideo() {
     const iframe = youtubeIframeRef.current;
     if (!iframe) return;
-    // JS API: Play
     iframe.contentWindow.postMessage(
       JSON.stringify({ event: "command", func: "playVideo", args: [] }),
       "*"
@@ -251,6 +280,13 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     return `${min}:${("0" + sec).slice(-2)}`;
   }
 
+  // Save recording meta to localStorage after successful completion
+  useEffect(() => {
+    if (recBlob && !isBlocked && !isRecording) {
+      saveRecordingToLocal(songId, title, activeYoutubeUrl);
+    }
+  }, [recBlob, isBlocked, isRecording, songId, title, activeYoutubeUrl]);
+
   return (
     <div className="container" style={{ paddingTop: 120, paddingBottom: 36, maxWidth: 570, margin: "0 auto" }}>
       <h2 className="title" style={{ marginTop: 0 }}>
@@ -263,7 +299,7 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
         </span>
       </div>
 
-      {/* Karaoke video for Shape of You uses Youtube https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us */}
+      {/* Karaoke video */}
       <div
         style={{
           width: "100%",
@@ -303,14 +339,6 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
         <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.09rem", textAlign: "center", marginBottom: 5 }}>
           {activeYoutubeUrl}
         </div>
-        {/* Optional: input to enter/change YouTube link */}
-        {/* <input
-          type="text"
-          style={{ width: "92%", margin: "0 0 8px 0", padding: 7, borderRadius: 6, border: "1px solid #409", color: "#0ad", background: "#fff2" }}
-          value={activeYoutubeUrl}
-          onChange={e => setActiveYoutubeUrl(e.target.value)}
-          placeholder="Paste YouTube karaoke link"
-        /> */}
         <div style={{ color: "#53f1c9", fontSize: "0.97rem", textAlign: "center" }}>
           The karaoke video will play when you click <b>Record</b>.
         </div>
