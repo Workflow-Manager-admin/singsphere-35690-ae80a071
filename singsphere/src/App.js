@@ -11,18 +11,24 @@ import ReactModal from 'react-modal';
  * Updates NavBar so that clicking the "Recordings" dropdown (or Record button if only one) loads the correct karaoke video based on the user's actual recordings.
  */
 function NavBar() {
+  // State for user recordings and the modal
   const [recordings, setRecordings] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedRecording, setSelectedRecording] = useState(null);
 
-  // Find most recent valid YouTube recording from localStorage (fallback)
+  // PUBLIC_INTERFACE
+  // Helper: Find the most recent valid YouTube recording from an array
+  // Always returns either a valid recording object or null (never an array/object that is not a recording)
   function getLatestRecording(allRecs) {
     if (!Array.isArray(allRecs)) return null;
+    // Defensive: filter to objects with valid karaokeYoutubeUrl
     const sorted = [...allRecs].sort(
       (a, b) => new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0)
     );
     for (const r of sorted) {
       if (
+        r &&
+        typeof r === "object" &&
         r.karaokeYoutubeUrl &&
         typeof r.karaokeYoutubeUrl === "string" &&
         r.karaokeYoutubeUrl.trim().startsWith("http")
@@ -33,13 +39,13 @@ function NavBar() {
     return null;
   }
 
-  // On mount, load recordings from localStorage
+  // On mount, load recordings from localStorage. Defensive for non-arrays and bad/malformed JSON.
   useEffect(() => {
     function loadRecordings() {
       try {
         const items = JSON.parse(localStorage.getItem('userRecordings') || '[]');
         setRecordings(Array.isArray(items) ? items : []);
-        // If none is selected, pick latest
+        // Select the most recent or valid recording if none selected
         if (!selectedRecording) {
           setSelectedRecording(getLatestRecording(items));
         }
@@ -102,6 +108,7 @@ function NavBar() {
           className="btn"
           style={{ minWidth: 110 }}
           title="Open your past recordings"
+          // Always open the modal
           onClick={(e) => setShowModal(true)}
           tabIndex={0}
         >
@@ -121,13 +128,16 @@ function NavBar() {
             boxShadow: "0 4px 20px #3bf3ee20"
           }}
         >
-          {Array.isArray(recordings) && recordings.length > 0
-            // Defensive mapping: Only render valid entries as buttons, skip malformed entries
-            ? recordings.map((rawRec, i) => {
+          {
+            // Defensive: Only attempt map if recordings is array and has at least one element
+            Array.isArray(recordings) && recordings.length > 0 ?
+              recordings.map((rawRec, i) => {
+                // Outer defensive: Always ensure .map callback returns JSX or string, never array/object
+                // Try/catch all malformed record row cases
                 try {
-                  // Ensure rec is an object you can read; skip primitives and handle null
+                  // Guard: recording row is object and not null
                   if (typeof rawRec !== "object" || rawRec === null) {
-                    // Render a disabled/fallback entry for non-object recording
+                    // Fallback for primitives or null: render a warning div (JSX)
                     return (
                       <div
                         key={`malformed_${i}`}
@@ -142,22 +152,22 @@ function NavBar() {
                       </div>
                     );
                   }
-                  // Defensive: coerce .title/.artist to string or default
-                  let title;
+                  // Defensive: coerce .title and .artist to strings for display
+                  let title = "Untitled";
                   if (typeof rawRec.title === "string") title = rawRec.title;
                   else if (rawRec.title !== undefined) title = String(rawRec.title);
-                  else title = "Untitled";
+
                   let artist = null;
                   if (typeof rawRec.artist === "string") artist = rawRec.artist;
                   else if (rawRec.artist !== undefined) artist = String(rawRec.artist);
 
-                  // Defensive: unique, always string, key
+                  // Defensive: Compute a unique key for each row (safe for rendering)
                   const keyParts = [
                     rawRec && rawRec.recordedAt ? String(rawRec.recordedAt) : "",
                     rawRec && rawRec.songId ? String(rawRec.songId) : "",
                     i,
                   ];
-                  // Highlight selection comparison by reference
+                  // Defensive: Compare by songId and recordedAt
                   const isSelected =
                     selectedRecording && rawRec &&
                     selectedRecording.recordedAt === rawRec.recordedAt &&
@@ -187,6 +197,7 @@ function NavBar() {
                       tabIndex={0}
                     >
                       <div>
+                        {/* Only string or undefined appears as title */}
                         {typeof title === "string" ? title : "Untitled"}
                         {artist ? (
                           <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
@@ -197,15 +208,15 @@ function NavBar() {
                       <div style={{ fontSize: ".93em", color: "#53ffee" }}>
                         Saved: {rawRec && rawRec.recordedAt
                           ? (() => {
-                              const dateVal = new Date(rawRec.recordedAt);
-                              return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
-                            })()
+                            const dateVal = new Date(rawRec.recordedAt);
+                            return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
+                          })()
                           : ""}
                       </div>
                     </button>
                   );
                 } catch (err) {
-                  // If error, render placeholder
+                  // Defensive fallback for *any* error in a row: render JSX error row
                   return (
                     <div
                       key={`errorrow_${i}`}
@@ -221,20 +232,23 @@ function NavBar() {
                   );
                 }
               })
-            : (
-              <div style={{ padding: "15px 0", color: "#ffa500", textAlign: "center" }}>
-                No recordings found.
-              </div>
-            )}
+              // If array is empty, show a user-friendly fallback
+              : (
+                <div style={{ padding: "15px 0", color: "#ffa500", textAlign: "center" }}>
+                  No recordings found.
+                </div>
+              )
+          }
         </div>
       </div>
     );
   }
 
-  // Render modal recording details, or YouTube fallback UI
+  // Render modal content for a recording: always return JSX/primitives.
+  // Includes robust fallback blocks for empty/malformed/null.
   function renderModalContent() {
     try {
-      // Null/undefined or not an object: broken/empty state
+      // Defensive: If selectedRecording is null/not object/empty, show relevant UI fallback.
       if (
         !selectedRecording ||
         typeof selectedRecording !== "object" ||
@@ -242,6 +256,7 @@ function NavBar() {
       ) {
         // No prior recording at all
         if (!Array.isArray(recordings) || recordings.length === 0) {
+          // No recordings exist -- render a call-to-action block (JSX)
           return (
             <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
               No previous recording found.<br />
@@ -251,7 +266,7 @@ function NavBar() {
             </div>
           );
         }
-        // Some recordings, but selected one is missing
+        // At least one recording exists but selection is corrupted/null
         return (
           <div style={{ color: "#ffa500", textAlign: "center", padding: 18 }}>
             Error: Recording data could not be loaded.<br />
@@ -260,14 +275,14 @@ function NavBar() {
         );
       }
 
-      // Check that the selectedRecording has an embeddable YouTube video
+      // Defensive check for YouTube ID extraction on selectedRecording's karaokeYoutubeUrl (must be a string)
       const videoId =
         typeof selectedRecording.karaokeYoutubeUrl === "string"
           ? extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)
           : null;
 
+      // If not a valid video id, fallback to an error block (never render a raw object or array)
       if (!videoId) {
-        // If YT url is invalid or missing, show fallback UI
         return (
           <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
             Could not embed YouTube video for this recording.<br />
@@ -281,7 +296,7 @@ function NavBar() {
         );
       }
 
-      // Defensive: coerce display values to strings
+      // Defensive: For all displays (title, artist), always coerce to string or fallback.
       const safeTitle =
         typeof selectedRecording.title === "string"
           ? selectedRecording.title
@@ -302,6 +317,7 @@ function NavBar() {
             })()
           : "";
 
+      // Normal display: Valid embed, strictly returning JSX fragments and string/primitives.
       return (
         <>
           <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
@@ -354,7 +370,7 @@ function NavBar() {
         </>
       );
     } catch (ex) {
-      // Defensive fallback for any unexpected error in content render
+      // Robust fallback for any rendering bug or broken data: strictly render JSX primitive error UI.
       return (
         <div style={{ color: "#ffa500", textAlign: "center", fontSize: "1.07rem", padding: 16 }}>
           Error displaying recording details.<br />
