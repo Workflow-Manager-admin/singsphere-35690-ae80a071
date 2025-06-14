@@ -39,18 +39,12 @@ function Homepage() {
   );
 }
 
+import SongLibraryContainer from "./containers/SongLibraryContainer";
+
 // PUBLIC_INTERFACE
 function SongLibrary() {
-  /** The song library page stub - will be implemented further. */
-  return (
-    <div className="container" style={{ paddingTop: 120 }}>
-      <h2 className="title">Song Library</h2>
-      <div className="description">
-        Browse and search for songs to sing!
-      </div>
-      {/* Song list grid goes here */}
-    </div>
-  );
+  // Song library feature implementation.
+  return <SongLibraryContainer />;
 }
 
 // PUBLIC_INTERFACE

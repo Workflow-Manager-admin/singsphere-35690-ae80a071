@@ -1,0 +1,116 @@
+import React, { useState, useMemo } from "react";
+import SongGrid from "../components/SongGrid";
+
+// Mock song data
+const MOCK_SONGS = [
+  {
+    id: "1",
+    title: "Bohemian Rhapsody",
+    artist: "Queen",
+    album: "A Night at the Opera",
+    coverUrl: ""
+  },
+  {
+    id: "2",
+    title: "Shallow",
+    artist: "Lady Gaga & Bradley Cooper",
+    album: "A Star Is Born",
+    coverUrl: ""
+  },
+  {
+    id: "3",
+    title: "Don't Stop Believin'",
+    artist: "Journey",
+    album: "Escape",
+    coverUrl: ""
+  },
+  {
+    id: "4",
+    title: "Let It Go",
+    artist: "Idina Menzel",
+    album: "Frozen",
+    coverUrl: ""
+  },
+  {
+    id: "5",
+    title: "Uptown Funk",
+    artist: "Mark Ronson ft. Bruno Mars",
+    album: "Uptown Special",
+    coverUrl: ""
+  },
+  {
+    id: "6",
+    title: "Billie Jean",
+    artist: "Michael Jackson",
+    album: "Thriller",
+    coverUrl: ""
+  },
+  {
+    id: "7",
+    title: "Shape of You",
+    artist: "Ed Sheeran",
+    album: "Divide",
+    coverUrl: ""
+  }
+];
+
+// PUBLIC_INTERFACE
+function SongLibraryContainer() {
+  /**
+   * Container for browsing/searching the song library.
+   * Handles state for search input and passes filtered data to SongGrid.
+   */
+
+  const [search, setSearch] = useState("");
+  const [songs] = useState(MOCK_SONGS);
+
+  // Filters songs based on title/artist/album
+  const filteredSongs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return songs;
+    return songs.filter((song) => {
+      return (
+        song.title.toLowerCase().includes(q) ||
+        song.artist.toLowerCase().includes(q) ||
+        song.album.toLowerCase().includes(q)
+      );
+    });
+  }, [search, songs]);
+
+  // Called when user clicks on a song
+  function handleSongSelect(song) {
+    // Stub for navigation: alert as placeholder
+    alert(`TODO: Navigate to song "${song.title}" (ID: ${song.id})`);
+  }
+
+  return (
+    <div className="container" style={{ paddingTop: 120, minHeight: "80vh" }}>
+      <h2 className="title" style={{ marginTop: 0 }}>Song Library</h2>
+      <div className="description" style={{ marginBottom: 16 }}>
+        Browse and search for songs to sing!
+      </div>
+      <input
+        type="text"
+        placeholder="Search by title, artist, or album..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "12px 14px",
+          borderRadius: 6,
+          outline: "none",
+          border: "1.5px solid var(--border-color)",
+          marginBottom: 32,
+          fontSize: "1.04rem",
+          background: "rgba(0,20,50,0.13)",
+          color: "#fff"
+        }}
+        autoFocus
+        aria-label="Search songs"
+      />
+      <SongGrid songs={filteredSongs} onSongSelect={handleSongSelect} />
+    </div>
+  );
+}
+
+export default SongLibraryContainer;
