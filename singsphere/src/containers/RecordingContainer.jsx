@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import RecorderControls from "../components/RecorderControls";
 import FilterSelector from "../components/FilterSelector";
 import LyricsDisplay from "../components/LyricsDisplay";
@@ -139,100 +139,138 @@ function RecordingContainer({ songId, title }) {
   // Synchronized local state for safe playback control
   const [audioAction, setAudioAction] = useState(null); // 'play' | 'pause' | null
 
+  // Flag to indicate if a play/pause promise is pending, preventing overlapping calls
+  const [isAudioActionPending, setIsAudioActionPending] = useState(false);
+
+  // Use ref for rapid update in async closures
+  const isAudioActionPendingRef = useRef(false);
+  useEffect(() => { isAudioActionPendingRef.current = isAudioActionPending; }, [isAudioActionPending]);
+
   // Play/Pause karaoke and optionally pause/resume the mic recording
-  function handlePlayPause() {
+  const handlePlayPause = useCallback(() => {
+    // Prevent double-click causing race conditions
+    if (isAudioActionPendingRef.current) return;
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying) {
       // Request a pause
-      setAudioAction('pause');
+      setAudioAction("pause");
       if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.pause();
       }
     } else {
       // Request a play, but don't redundantly call play if already playing
-      setAudioAction('play');
+      setAudioAction("play");
       if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
         mediaRecorderRef.current.resume();
       }
     }
-  }
+  // eslint-disable-next-line
+  }, [isPlaying, isRecording]);
 
   // Centralized effect for play/pause transitions to avoid race
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    const suppressKnownPlayError = (err) =>
+      err &&
+      (err.name === "AbortError" ||
+        (typeof err.message === "string" &&
+          err.message.indexOf("The play() request was interrupted") !== -1) ||
+        (typeof err.message === "string" &&
+          err.message.includes("is already playing")));
+
     // Only trigger play/pause if action is requested and state sync matches
-    if (audioAction === 'pause') {
-      // Only call pause when playing
+    // Use guarded logic to prevent overlapping actions
+    if (audioAction === "pause" && !isAudioActionPendingRef.current) {
       if (!audio.paused) {
-        audio.pause();
+        setIsAudioActionPending(true);
+        try {
+          audio.pause();
+          setIsPlaying(false);
+        } catch (err) {
+          // Unexpected error (rare for pause, just log)
+          // eslint-disable-next-line no-console
+          console.warn("Audio pause() failed:", err);
+          setIsPlaying(false);
+        }
+        setIsAudioActionPending(false);
+      } else {
+        setIsPlaying(false);
       }
-      setIsPlaying(false);
       setAudioAction(null);
-    } else if (audioAction === 'play') {
-      // Only call play when paused
+    } else if (audioAction === "play" && !isAudioActionPendingRef.current) {
       if (audio.paused) {
         // play() should always use promise handling for error suppression
+        setIsAudioActionPending(true);
         const playPromise = audio.play();
         if (playPromise && typeof playPromise.then === "function") {
           playPromise
-            .then(() => { setIsPlaying(true); })
+            .then(() => {
+              setIsPlaying(true);
+              setIsAudioActionPending(false);
+            })
             .catch((err) => {
-              // Only log the error if it's not the "play() interrupted by pause()" error
-              if (
-                err &&
-                err.name === "AbortError"
-                || (typeof err.message === "string" &&
-                    err.message.indexOf("The play() request was interrupted") !== -1)
-              ) {
-                // Suppress benign interruption error
-              } else {
-                // Log to console for unexpected trouble
+              if (!suppressKnownPlayError(err)) {
                 // eslint-disable-next-line no-console
                 console.warn("Audio play() failed:", err);
               }
               setIsPlaying(false);
+              setIsAudioActionPending(false);
             });
         } else {
-          // Fallback: synchronous play (may throw, guard with try/catch)
+          // Fallback: synchronous play (should be rare)
           try {
             audio.play();
             setIsPlaying(true);
           } catch (err) {
+            if (!suppressKnownPlayError(err)) {
+              // eslint-disable-next-line no-console
+              console.warn("Audio play() failed (sync):", err);
+            }
             setIsPlaying(false);
           }
+          setIsAudioActionPending(false);
         }
       } else {
         setIsPlaying(true); // Already playing
+        setIsAudioActionPending(false);
       }
       setAudioAction(null);
     }
-  // Only respond to audioAction change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only respond to audioAction or isAudioActionPending changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioAction]);
 
-  function handleRestart() {
+  const handleRestart = useCallback(() => {
+    if (isAudioActionPendingRef.current) return;
     const audio = audioRef.current;
     if (audio) {
+      // Don't reset or set audio.currentTime unless not in transition
+      // Only set currentTime and trigger play
       audio.currentTime = 0;
-      setAudioAction('play');
+      setAudioAction("play");
       if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state !== "recording") {
         mediaRecorderRef.current.resume();
       }
     }
-  }
+    // eslint-disable-next-line
+  }, [isRecording]);
 
-  function handleSeek(e) {
-    const audio = audioRef.current;
-    const newTime = Number(e.target.value);
-    if (audio) {
-      audio.currentTime = newTime;
-    }
-    setAudioCurrentTime(newTime);
-  }
+  const handleSeek = useCallback(
+    (e) => {
+      if (isAudioActionPendingRef.current) return;
+      const audio = audioRef.current;
+      const newTime = Number(e.target.value);
+      if (audio) {
+        audio.currentTime = newTime;
+      }
+      setAudioCurrentTime(newTime);
+    },
+    []
+  );
 
   // --- END SYNCHRONIZED, ERROR-HANDLED AUDIO LOGIC REFACTOR ---
 
@@ -244,6 +282,7 @@ function RecordingContainer({ songId, title }) {
     setIsBlocked(false);
     setStatus("idle");
     setAudioAction(null); // Ensure race-safe state clear on song change
+    setIsAudioActionPending(false);
   }, [songId]);
 
   // Timer for voice recording duration UI
@@ -335,6 +374,7 @@ function RecordingContainer({ songId, title }) {
         micStreamRef.current = null;
       }
       if (recTimerRef.current) clearInterval(recTimerRef.current);
+      setIsAudioActionPending(false);
     };
     // eslint-disable-next-line
   }, []);
@@ -393,10 +433,12 @@ function RecordingContainer({ songId, title }) {
           onPlay={() => {
             setIsPlaying(true);
             setAudioAction(null);
+            setIsAudioActionPending(false);
           }}
           onPause={() => {
             setIsPlaying(false);
             setAudioAction(null);
+            setIsAudioActionPending(false);
           }}
         >
           <source src={audioUrl} type="audio/mp3" />
@@ -423,7 +465,7 @@ function RecordingContainer({ songId, title }) {
             className="btn"
             style={{ fontWeight: 600, minWidth: 72, background: isPlaying ? "#F53E12" : "var(--base-light)" }}
             onClick={handlePlayPause}
-            disabled={isBlocked}
+            disabled={isBlocked || isAudioActionPending}
           >
             {isPlaying ? (
               <><span style={{ fontSize: 18, marginRight: 7 }}>⏸</span> Pause</>
@@ -435,7 +477,7 @@ function RecordingContainer({ songId, title }) {
             className="btn"
             style={{ background: "#F5A623", fontWeight: 600, minWidth: 72, color: "#1A1A1A" }}
             onClick={handleRestart}
-            disabled={audioCurrentTime === 0 && !isPlaying}
+            disabled={audioCurrentTime === 0 && !isPlaying || isAudioActionPending}
           >
             <span style={{ fontSize: 17, marginRight: 7 }}>⏮</span>Restart
           </button>
@@ -449,10 +491,11 @@ function RecordingContainer({ songId, title }) {
           max={audioDuration}
           ref={seekInputRef}
           value={Math.min(audioCurrentTime, audioDuration)}
-          onChange={handleSeek}
+          onChange={isAudioActionPending ? undefined : handleSeek}
           step={0.1}
           style={{ width: "100%", marginTop: 9, accentColor: "var(--base-light, #00ffff)" }}
           aria-label="Karaoke seek"
+          disabled={isAudioActionPending}
         />
         <div style={{ fontSize: "0.96rem", color: "var(--text-secondary)", marginTop: 2, textAlign: "center" }}>
           Drag to skip to part of the song
