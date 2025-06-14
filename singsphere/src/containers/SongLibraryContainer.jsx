@@ -27,9 +27,9 @@ const MOCK_SONGS = [
   },
   {
     id: "4",
-    title: "Let It Go",
-    artist: "Idina Menzel",
-    album: "Frozen",
+    title: "Ennai Konjam Maatri",
+    artist: "Harris Jayaraj",
+    album: "Anniyan",
     coverUrl: ""
   },
   {

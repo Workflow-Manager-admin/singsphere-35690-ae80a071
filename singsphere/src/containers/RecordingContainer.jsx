@@ -40,6 +40,9 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     // Updated mapping for Oru Paadhi Kadhavu Neeyadi
     "3": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8",
     "Oru Paadhi Kadhavu Neeyadi": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8",
+    // New mapping for Ennai Konjam Maatri
+    "4": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
+    "Ennai Konjam Maatri": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };
