@@ -45,6 +45,9 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     "Ennai Konjam Maatri": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
     "5": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe mapping
     "Kaun Tujhe": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe mapping by title
+    // Mapping for Ae Dil Hai Mushkil
+    "6": "https://youtu.be/gsTTKvzRMg4?si=T_t79g_56rFJaJur",
+    "Ae Dil Hai Mushkil": "https://youtu.be/gsTTKvzRMg4?si=T_t79g_56rFJaJur",
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };

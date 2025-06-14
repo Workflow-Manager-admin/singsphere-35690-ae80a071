@@ -41,9 +41,9 @@ const MOCK_SONGS = [
   },
   {
     id: "6",
-    title: "Billie Jean",
-    artist: "Michael Jackson",
-    album: "Thriller",
+    title: "Ae Dil Hai Mushkil",
+    artist: "Arjit Singh, Pritam",
+    album: "Ae Dil Hai Mushkil",
     coverUrl: ""
   },
   {
