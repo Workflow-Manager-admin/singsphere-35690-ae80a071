@@ -47,18 +47,12 @@ function SongLibrary() {
   return <SongLibraryContainer />;
 }
 
+import RecordingContainer from "./containers/RecordingContainer";
+
 // PUBLIC_INTERFACE
 function Recording() {
-  /** The recording interface stub - will be expanded with recording controls. */
-  return (
-    <div className="container" style={{ paddingTop: 120 }}>
-      <h2 className="title">Record Your Singing</h2>
-      <div className="description">
-        Record your karaoke performance with vocal effects!
-      </div>
-      {/* Recording controls and status will go here */}
-    </div>
-  );
+  /** The recording interface renders the RecordingContainer with controls. */
+  return <RecordingContainer />;
 }
 
 import PlaybackContainer from "./containers/PlaybackContainer";
