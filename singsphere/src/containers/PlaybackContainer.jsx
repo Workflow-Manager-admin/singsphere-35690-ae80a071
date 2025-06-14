@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import LyricsDisplay from "../components/LyricsDisplay";
+import PlaybackControls from "../components/PlaybackControls";
 
 // Mock lyrics: simple example
 const MOCK_LYRICS = [
@@ -13,28 +14,37 @@ const MOCK_LYRICS = [
   { time: 33, text: "Any way the wind blows, doesn't really matter to me, to me" }
 ];
 
+// Demo filter options, reused from Recorder/FilterSelector
+const FILTERS = [
+  { label: "Reverb", value: "reverb", icon: "🌊" },
+  { label: "Auto-Tune", value: "autotune", icon: "🎶" },
+  { label: "Robot", value: "robot", icon: "🤖" }
+];
+
 // PUBLIC_INTERFACE
 function PlaybackContainer() {
   /**
-   * Simulated playback container with synced lyrics display.
-   * Shows playback controls stub, handles simulated playback timing,
-   * and highlights current lyric line.
+   * Simulated playback container with synced lyrics display and playback controls.
+   * Integrates new PlaybackControls component.
+   * Handles mock playback timing, filter state, and lyric sync.
    */
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [selectedFilters, setSelectedFilters] = useState([]);
   const INTERVAL_MS = 400;
-  const duration = MOCK_LYRICS.length > 0 ? MOCK_LYRICS[MOCK_LYRICS.length - 1].time + 5 : 40;
-
+  const duration =
+    MOCK_LYRICS.length > 0 ? MOCK_LYRICS[MOCK_LYRICS.length - 1].time + 5 : 40;
   const intervalRef = useRef();
 
   // Simulated playback timer effect
   useEffect(() => {
     if (!isPlaying) return;
-
     intervalRef.current = setInterval(() => {
-      setCurrentTime(prev =>
-        prev + INTERVAL_MS / 1000 < duration ? prev + INTERVAL_MS / 1000 : duration
+      setCurrentTime((prev) =>
+        prev + INTERVAL_MS / 1000 < duration
+          ? prev + INTERVAL_MS / 1000
+          : duration
       );
     }, INTERVAL_MS);
 
@@ -48,7 +58,7 @@ function PlaybackContainer() {
     }
   }, [currentTime, duration, isPlaying]);
 
-  // Play/Pause handlers
+  // Play/Pause toggle
   function handlePlayPause() {
     if (isPlaying) {
       setIsPlaying(false);
@@ -63,36 +73,75 @@ function PlaybackContainer() {
     setIsPlaying(true);
   }
 
+  function handleSeek(newTime) {
+    setCurrentTime(Number(newTime));
+    // Restart playback if seeking to start after finished
+    if (!isPlaying && newTime < duration) setIsPlaying(false);
+  }
+
+  function handleToggleFilter(newSelection) {
+    setSelectedFilters(newSelection);
+    // In real app, triggers audio pipeline change
+  }
+
   return (
-    <div className="container" style={{ paddingTop: 110, paddingBottom: 40, minHeight: 400 }}>
-      <h2 className="title" style={{ marginTop: 0, marginBottom: 16 }}>Playback Performance</h2>
+    <div
+      className="container"
+      style={{
+        paddingTop: 110,
+        paddingBottom: 40,
+        minHeight: 400,
+        maxWidth: 540,
+        margin: "0 auto",
+      }}
+    >
+      <h2 className="title" style={{ marginTop: 0, marginBottom: 16 }}>
+        Playback Performance
+      </h2>
       <div className="description" style={{ marginBottom: 22 }}>
         Listen to your performance and watch synced lyrics!
       </div>
-      <div style={{ display: "flex", justifyContent: "center", gap: 30, marginBottom: 25, alignItems: "center" }}>
-        <button
-          className="btn"
-          style={{ background: "#4A90E2", minWidth: 80 }}
-          onClick={handlePlayPause}
-        >
-          {isPlaying ? "Pause" : currentTime > 0 && currentTime < duration ? "Resume" : "Play"}
-        </button>
-        <button
-          className="btn"
-          style={{ background: "#F5A623", minWidth: 80 }}
-          onClick={handleRestart}
-          disabled={currentTime === 0 && !isPlaying}
-        >
-          Restart
-        </button>
-        <span style={{ color: "#bfefff", fontWeight: 500 }}>
-          {Math.floor(currentTime / 60)}:{("0" + Math.floor(currentTime % 60)).slice(-2)}
-        </span>
+      <PlaybackControls
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        onRestart={handleRestart}
+        currentTime={currentTime}
+        duration={duration}
+        onSeek={handleSeek}
+        filters={FILTERS}
+        selectedFilters={selectedFilters}
+        onToggleFilter={handleToggleFilter}
+      />
+      {/* Show selected filters info */}
+      <div style={{ textAlign: "center", marginBottom: 12, color: "#bfefff", fontWeight: 500 }}>
+        {selectedFilters.length > 0
+          ? (
+            <>
+              Filters applied:&nbsp;
+              {selectedFilters
+                .map(
+                  (val) =>
+                    (FILTERS.find((f) => f.value === val)?.icon || "") +
+                    " " +
+                    (FILTERS.find((f) => f.value === val)?.label || val)
+                )
+                .join(", ")}
+              &nbsp;(mock)
+            </>
+          )
+          : "No filters applied"}
       </div>
       <LyricsDisplay lyrics={MOCK_LYRICS} currentTime={currentTime} />
-      <div style={{ color: "var(--text-secondary)", fontSize: "0.93rem", marginTop: 18, textAlign: "center" }}>
-        Demo – Lyrics sync scrolls as playback progresses.<br />
-        This is a mock; actual audio/recording API will be integrated soon.
+      <div
+        style={{
+          color: "var(--text-secondary)",
+          fontSize: "0.93rem",
+          marginTop: 18,
+          textAlign: "center",
+        }}
+      >
+        Demo – Lyrics scroll as playback progresses.<br />
+        This is a mock; actual audio/recording pipeline will be integrated soon.
       </div>
     </div>
   );
