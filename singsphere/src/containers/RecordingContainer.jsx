@@ -444,9 +444,6 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
  *   - selectedFilters: array of filter names (e.g. ["reverb", ...])
  *   - FILTERS: filter meta (label, value, icon)
  */
-import React, { useEffect, useState } from "react";
-import { applyFiltersToBlob } from "../utils/audioFilters";
-
 // PUBLIC_INTERFACE
 function ApplyFiltersPlaybackBlock({ recBlob, selectedFilters, FILTERS }) {
   const [filteredUrl, setFilteredUrl] = useState();
