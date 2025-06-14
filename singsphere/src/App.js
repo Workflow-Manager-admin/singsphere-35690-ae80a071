@@ -121,40 +121,57 @@ function NavBar() {
             boxShadow: "0 4px 20px #3bf3ee20"
           }}
         >
-          {recordings.map((rec, i) => (
-            <button
-              key={(rec.recordedAt || "") + (rec.songId ?? "") + "_" + i}
-              className="btn"
-              style={{
-                display: "block",
-                width: "100%",
-                background: selectedRecording === rec ? "var(--base-light)" : "rgba(20,50,130,0.26)",
-                color: selectedRecording === rec ? "#fff" : "#bfefff",
-                textAlign: "left",
-                fontWeight: selectedRecording === rec ? 700 : 500,
-                fontSize: "1rem",
-                border: "none",
-                borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
-                borderRadius: 0,
-                padding: "13px 16px",
-                cursor: "pointer"
-              }}
-              onClick={handleRecordingMenuSelect.bind(null, rec)}
-              tabIndex={0}
-            >
-              <div>
-                {typeof rec.title === "string" ? rec.title : "Untitled"}
-                {rec.artist && typeof rec.artist === "string" ? (
-                  <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
-                    by {rec.artist}
-                  </span>
-                ) : null}
-              </div>
-              <div style={{ fontSize: ".93em", color: "#53ffee" }}>
-                Saved: {rec.recordedAt ? new Date(rec.recordedAt).toLocaleString() : ""}
-              </div>
-            </button>
-          ))}
+          {Array.isArray(recordings) &&
+            recordings.map((rec, i) => {
+              // Defensive: Avoid passing non-strings/objects directly to React, coerce on error
+              const title =
+                typeof rec?.title === "string"
+                  ? rec.title
+                  : (rec && rec.title !== undefined
+                      ? String(rec.title)
+                      : "Untitled");
+              const artist =
+                rec && rec.artist && typeof rec.artist === "string"
+                  ? rec.artist
+                  : (rec && rec.artist !== undefined
+                      ? String(rec.artist)
+                      : null);
+
+              return (
+                <button
+                  key={`${rec && rec.recordedAt ? rec.recordedAt : ""}${rec && rec.songId ? rec.songId : ""}_${i}`}
+                  className="btn"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    background: selectedRecording === rec ? "var(--base-light)" : "rgba(20,50,130,0.26)",
+                    color: selectedRecording === rec ? "#fff" : "#bfefff",
+                    textAlign: "left",
+                    fontWeight: selectedRecording === rec ? 700 : 500,
+                    fontSize: "1rem",
+                    border: "none",
+                    borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                    borderRadius: 0,
+                    padding: "13px 16px",
+                    cursor: "pointer"
+                  }}
+                  onClick={handleRecordingMenuSelect.bind(null, rec)}
+                  tabIndex={0}
+                >
+                  <div>
+                    {title}
+                    {artist ? (
+                      <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
+                        by {artist}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div style={{ fontSize: ".93em", color: "#53ffee" }}>
+                    Saved: {rec && rec.recordedAt ? new Date(rec.recordedAt).toLocaleString() : ""}
+                  </div>
+                </button>
+              );
+            })}
         </div>
       </div>
     );
