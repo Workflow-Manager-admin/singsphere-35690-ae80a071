@@ -20,9 +20,9 @@ const MOCK_SONGS = [
   },
   {
     id: "3",
-    title: "Don't Stop Believin'",
-    artist: "Journey",
-    album: "Escape",
+    title: "Oru Paadhi Kadhavu Neeyadi",
+    artist: "G V Prakash Kumar",
+    album: "N/A",
     coverUrl: ""
   },
   {

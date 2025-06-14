@@ -37,6 +37,9 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     "Blinding Lights": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // fallback by title (NEW LINK)
     "2": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM", // Pirai Thedum Iravile by Saindhavi
     "Pirai Thedum Iravile": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM",
+    // Updated mapping for Oru Paadhi Kadhavu Neeyadi
+    "3": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8",
+    "Oru Paadhi Kadhavu Neeyadi": "https://youtu.be/FSrjMLYTzMY?si=waKsI9zlAu4lTAY8",
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };
