@@ -94,7 +94,7 @@ function NavBar() {
 
   // Render Recording button drop-down, if more than 1 recording
   function renderRecordingDropdown() {
-    if (recordings.length <= 1) return null;
+    if (!Array.isArray(recordings) || recordings.length <= 1) return null;
     return (
       <div style={{ position: "relative", display: "inline-block" }}>
         <button
@@ -121,75 +121,111 @@ function NavBar() {
             boxShadow: "0 4px 20px #3bf3ee20"
           }}
         >
-          {Array.isArray(recordings) &&
-            recordings.map((rawRec, i) => {
-              // Defensive block: ensure rec is an object and not accidentally null/primitive
-              const rec = typeof rawRec === "object" && rawRec !== null ? rawRec : {};
-              // Defensive: Avoid passing non-strings/objects directly to React, coerce on error
-              let title;
-              if (typeof rec.title === "string") title = rec.title;
-              else if (rec.title !== undefined) title = String(rec.title);
-              else title = "Untitled";
-              let artist = null;
-              if (typeof rec.artist === "string") artist = rec.artist;
-              else if (rec.artist !== undefined) artist = String(rec.artist);
-
-              // Defensive: unique key, fallback to index if not enough entropy
-              // Never return an object here
-              return (
-                <button
-                  // Defensive - always a string key
-                  key={
-                    [
-                      rec && rec.recordedAt ? String(rec.recordedAt) : "",
-                      rec && rec.songId ? String(rec.songId) : "",
-                      i,
-                    ].join("_")
+          {Array.isArray(recordings) && recordings.length > 0
+            // Defensive mapping: Only render valid entries as buttons, skip malformed entries
+            ? recordings.map((rawRec, i) => {
+                try {
+                  // Ensure rec is an object you can read; skip primitives and handle null
+                  if (typeof rawRec !== "object" || rawRec === null) {
+                    // Render a disabled/fallback entry for non-object recording
+                    return (
+                      <div
+                        key={`malformed_${i}`}
+                        style={{
+                          padding: "13px 16px",
+                          color: "#ffa500",
+                          fontStyle: "italic",
+                          borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                        }}
+                      >
+                        Malformed recording entry
+                      </div>
+                    );
                   }
-                  className="btn"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    background:
-                      selectedRecording === rec
-                        ? "var(--base-light)"
-                        : "rgba(20,50,130,0.26)",
-                    color:
-                      selectedRecording === rec ? "#fff" : "#bfefff",
-                    textAlign: "left",
-                    fontWeight: selectedRecording === rec ? 700 : 500,
-                    fontSize: "1rem",
-                    border: "none",
-                    borderBottom:
-                      i !== recordings.length - 1
-                        ? "1px solid #04ffff22"
-                        : "none",
-                    borderRadius: 0,
-                    padding: "13px 16px",
-                    cursor: "pointer"
-                  }}
-                  onClick={e => handleRecordingMenuSelect(rec, e)}
-                  tabIndex={0}
-                >
-                  <div>
-                    {typeof title === "string" ? title : "Untitled"}
-                    {artist ? (
-                      <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
-                        by {artist}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div style={{ fontSize: ".93em", color: "#53ffee" }}>
-                    Saved: {(rec && rec.recordedAt)
-                      ? (() => {
-                          const dateVal = new Date(rec.recordedAt);
-                          return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
-                        })()
-                      : ""}
-                  </div>
-                </button>
-              );
-            })}
+                  // Defensive: coerce .title/.artist to string or default
+                  let title;
+                  if (typeof rawRec.title === "string") title = rawRec.title;
+                  else if (rawRec.title !== undefined) title = String(rawRec.title);
+                  else title = "Untitled";
+                  let artist = null;
+                  if (typeof rawRec.artist === "string") artist = rawRec.artist;
+                  else if (rawRec.artist !== undefined) artist = String(rawRec.artist);
+
+                  // Defensive: unique, always string, key
+                  const keyParts = [
+                    rawRec && rawRec.recordedAt ? String(rawRec.recordedAt) : "",
+                    rawRec && rawRec.songId ? String(rawRec.songId) : "",
+                    i,
+                  ];
+                  // Highlight selection comparison by reference
+                  const isSelected =
+                    selectedRecording && rawRec &&
+                    selectedRecording.recordedAt === rawRec.recordedAt &&
+                    selectedRecording.songId === rawRec.songId;
+
+                  return (
+                    <button
+                      key={keyParts.join("_")}
+                      className="btn"
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        background:
+                          isSelected ? "var(--base-light)" : "rgba(20,50,130,0.26)",
+                        color: isSelected ? "#fff" : "#bfefff",
+                        textAlign: "left",
+                        fontWeight: isSelected ? 700 : 500,
+                        fontSize: "1rem",
+                        border: "none",
+                        borderBottom:
+                          i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                        borderRadius: 0,
+                        padding: "13px 16px",
+                        cursor: "pointer"
+                      }}
+                      onClick={e => handleRecordingMenuSelect(rawRec, e)}
+                      tabIndex={0}
+                    >
+                      <div>
+                        {typeof title === "string" ? title : "Untitled"}
+                        {artist ? (
+                          <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
+                            by {artist}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: ".93em", color: "#53ffee" }}>
+                        Saved: {rawRec && rawRec.recordedAt
+                          ? (() => {
+                              const dateVal = new Date(rawRec.recordedAt);
+                              return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
+                            })()
+                          : ""}
+                      </div>
+                    </button>
+                  );
+                } catch (err) {
+                  // If error, render placeholder
+                  return (
+                    <div
+                      key={`errorrow_${i}`}
+                      style={{
+                        padding: "13px 16px",
+                        color: "#ffa500",
+                        fontStyle: "italic",
+                        borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                      }}
+                    >
+                      Error rendering recording info
+                    </div>
+                  );
+                }
+              })
+            : (
+              <div style={{ padding: "15px 0", color: "#ffa500", textAlign: "center" }}>
+                No recordings found.
+              </div>
+            )}
         </div>
       </div>
     );
@@ -197,80 +233,135 @@ function NavBar() {
 
   // Render modal recording details, or YouTube fallback UI
   function renderModalContent() {
-    if (!selectedRecording || !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)) {
-      // Only strings, JSX, and primitive types allowed. No object/array as root child; flatten logic.
-      if (recordings.length === 0) {
+    try {
+      // Null/undefined or not an object: broken/empty state
+      if (
+        !selectedRecording ||
+        typeof selectedRecording !== "object" ||
+        (Array.isArray(selectedRecording) && selectedRecording.length === 0)
+      ) {
+        // No prior recording at all
+        if (!Array.isArray(recordings) || recordings.length === 0) {
+          return (
+            <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
+              No previous recording found.<br />
+              <Link to="/record" className="btn btn-large" onClick={handleModalClose}>
+                Start Recording
+              </Link>
+            </div>
+          );
+        }
+        // Some recordings, but selected one is missing
         return (
-          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
-            No previous recording found.<br />
-            <Link to="/record" className="btn btn-large" onClick={handleModalClose}>
-              Start Recording
-            </Link>
-          </div>
-        );
-      } else {
-        return (
-          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
-            Could not embed YouTube video for this recording.<br />
-            {selectedRecording && selectedRecording.karaokeYoutubeUrl && !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl) ? (
-              <span style={{ color: "#FFA500" }}>Invalid YouTube URL.</span>
-            ) : null}
+          <div style={{ color: "#ffa500", textAlign: "center", padding: 18 }}>
+            Error: Recording data could not be loaded.<br />
+            Please try another one.
           </div>
         );
       }
+
+      // Check that the selectedRecording has an embeddable YouTube video
+      const videoId =
+        typeof selectedRecording.karaokeYoutubeUrl === "string"
+          ? extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)
+          : null;
+
+      if (!videoId) {
+        // If YT url is invalid or missing, show fallback UI
+        return (
+          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
+            Could not embed YouTube video for this recording.<br />
+            {selectedRecording &&
+              selectedRecording.karaokeYoutubeUrl &&
+              typeof selectedRecording.karaokeYoutubeUrl === "string" &&
+              !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl) ? (
+                <span style={{ color: "#FFA500" }}>Invalid YouTube URL.</span>
+              ) : null}
+          </div>
+        );
+      }
+
+      // Defensive: coerce display values to strings
+      const safeTitle =
+        typeof selectedRecording.title === "string"
+          ? selectedRecording.title
+          : selectedRecording.title !== undefined
+            ? String(selectedRecording.title)
+            : "Untitled";
+      const safeArtist =
+        typeof selectedRecording.artist === "string"
+          ? selectedRecording.artist
+          : selectedRecording.artist !== undefined
+            ? String(selectedRecording.artist)
+            : null;
+      const recordedAtDate =
+        selectedRecording.recordedAt
+          ? (() => {
+              const dt = new Date(selectedRecording.recordedAt);
+              return isNaN(dt.getTime()) ? "" : dt.toLocaleString();
+            })()
+          : "";
+
+      return (
+        <>
+          <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
+            <iframe
+              title="Your Karaoke Recording"
+              width="100%"
+              height="100%"
+              style={{ width: "100%", height: "100%", border: 0, borderRadius: 9, background: "#000" }}
+              src={`https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&controls=1&autoplay=1`}
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
+          </div>
+          <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.08rem", textAlign: "center" }}>
+            {safeTitle}
+            {safeArtist && (
+              <span style={{ fontWeight: 400, color: "var(--text-secondary)", marginLeft: 7 }}>
+                by {safeArtist}
+              </span>
+            )}
+          </div>
+          <div style={{ color: "var(--text-secondary)", fontSize: ".96rem", textAlign: "center", margin: "6px 0" }}>
+            Saved: {recordedAtDate}
+          </div>
+          <div style={{ color: "#53ffee", fontSize: "0.98rem", textAlign: "center" }}>
+            <a
+              href={selectedRecording.karaokeYoutubeUrl}
+              style={{ textDecoration: "underline", color: "#53ffee" }}
+              target="_blank" rel="noopener noreferrer"
+            >View on YouTube</a>
+          </div>
+          <div style={{ marginTop: 13, textAlign: "center" }}>
+            <Link
+              className="btn btn-large"
+              style={{ margin: "0 auto", background: "linear-gradient(90deg, var(--base-light), #4A90E2)" }}
+              to={
+                selectedRecording.songId
+                  ? `/record/${selectedRecording.songId}`
+                  : "/record"
+              }
+              state={{
+                songId: selectedRecording.songId,
+                title: safeTitle,
+              }}
+              onClick={handleModalClose}
+            >
+              Record Again
+            </Link>
+          </div>
+        </>
+      );
+    } catch (ex) {
+      // Defensive fallback for any unexpected error in content render
+      return (
+        <div style={{ color: "#ffa500", textAlign: "center", fontSize: "1.07rem", padding: 16 }}>
+          Error displaying recording details.<br />
+          Please try again or reload the page.
+        </div>
+      );
     }
-    // Recording exists and has valid YT URL
-    return (
-      <>
-        <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
-          <iframe
-            title="Your Karaoke Recording"
-            width="100%"
-            height="100%"
-            style={{ width: "100%", height: "100%", border: 0, borderRadius: 9, background: "#000" }}
-            src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)}?modestbranding=1&rel=0&controls=1&autoplay=1`}
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
-        </div>
-        <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.08rem", textAlign: "center" }}>
-          {selectedRecording.title || "Untitled"}
-          {selectedRecording.artist && (
-            <span style={{ fontWeight: 400, color: "var(--text-secondary)", marginLeft: 7 }}>
-              by {selectedRecording.artist}
-            </span>
-          )}
-        </div>
-        <div style={{ color: "var(--text-secondary)", fontSize: ".96rem", textAlign: "center", margin: "6px 0" }}>
-          Saved: {selectedRecording.recordedAt ? new Date(selectedRecording.recordedAt).toLocaleString() : ""}
-        </div>
-        <div style={{ color: "#53ffee", fontSize: "0.98rem", textAlign: "center" }}>
-          <a
-            href={selectedRecording.karaokeYoutubeUrl}
-            style={{ textDecoration: "underline", color: "#53ffee" }}
-            target="_blank" rel="noopener noreferrer"
-          >View on YouTube</a>
-        </div>
-        <div style={{ marginTop: 13, textAlign: "center" }}>
-          <Link
-            className="btn btn-large"
-            style={{ margin: "0 auto", background: "linear-gradient(90deg, var(--base-light), #4A90E2)" }}
-            to={
-              selectedRecording.songId
-                ? `/record/${selectedRecording.songId}`
-                : "/record"
-            }
-            state={{
-              songId: selectedRecording.songId,
-              title: selectedRecording.title,
-            }}
-            onClick={handleModalClose}
-          >
-            Record Again
-          </Link>
-        </div>
-      </>
-    );
   }
 
   return (
