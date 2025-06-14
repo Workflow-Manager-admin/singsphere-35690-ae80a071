@@ -13,9 +13,9 @@ const MOCK_SONGS = [
   },
   {
     id: "2",
-    title: "Shallow",
-    artist: "Lady Gaga & Bradley Cooper",
-    album: "A Star Is Born",
+    title: "Pirai Thedum Iravile",
+    artist: "Saindhavi",
+    album: "N/A",
     coverUrl: ""
   },
   {

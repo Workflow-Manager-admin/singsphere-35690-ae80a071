@@ -35,6 +35,8 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     // ID or title
     "1": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // Blinding Lights by The Weeknd (NEW LINK)
     "Blinding Lights": "https://youtu.be/GgcyCJEEpbg?si=4vwsZlIL21aJF9YO", // fallback by title (NEW LINK)
+    "2": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM", // Pirai Thedum Iravile by Saindhavi
+    "Pirai Thedum Iravile": "https://youtu.be/UAhhhRGfD5E?si=FtoMNfHnKfUJlJwM",
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };
