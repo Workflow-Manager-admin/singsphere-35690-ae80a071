@@ -21,3 +21,18 @@ Waiting... (10/15)
 Waiting... (11/15)
 Waiting... (12/15)
 Waiting... (13/15)
+Waiting... (14/15)
+Waiting... (15/15)
+Setting up database and user...
+Database might already exist
+sudo: unknown user postgres
+sudo: error initializing audit plugin sudoers_audit
+Connection string saved to db_connection.txt
+PostgreSQL setup complete!
+Database: myapp
+User: appuser
+Port: 5432
+
+To connect to the database, use one of the following commands:
+psql -h localhost -U appuser -d myapp -p 5432
+psql postgresql://appuser:dbuser123@localhost:5432/myapp

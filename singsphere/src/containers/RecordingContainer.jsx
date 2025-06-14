@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import RecorderControls from "../components/RecorderControls";
 import FilterSelector from "../components/FilterSelector";
 import LyricsDisplay from "../components/LyricsDisplay";
+import { applyFiltersToBlob } from "../utils/audioFilters";
 
 /**
  * PUBLIC_INTERFACE
@@ -401,28 +402,9 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
           </div>
         )}
       </div>
+      {/* ===================== Playback and Filters Applied ===================== */}
       {!isRecording && recBlob && !isBlocked && (
-        <div style={{
-            marginTop: 18,
-            color: "#6fffad",
-            fontSize: 17,
-            textAlign: "center",
-            fontWeight: 500,
-          }} aria-live="polite">
-          <div>
-            Recording complete!
-            <br />
-            <audio controls src={URL.createObjectURL(recBlob)} style={{ marginTop: 9, maxWidth: 260 }} />
-          </div>
-          <br />
-          {selectedFilters.length > 0 && (
-            <span style={{ fontSize: "0.97rem", color: "#a5e2fa" }}>
-              Filters chosen: {selectedFilters.map(
-                (val) => FILTERS.find((f) => f.value === val)?.label || val
-              ).join(", ")} (mock, not applied to audio)
-            </span>
-          )}
-        </div>
+        <ApplyFiltersPlaybackBlock recBlob={recBlob} selectedFilters={selectedFilters} FILTERS={FILTERS} />
       )}
       {isBlocked && (
         <div
@@ -451,6 +433,88 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
         Your voice will be recorded live via your browser mic.<br />
         <b>Tip</b>: Use earphones to prevent echo/feedback!
       </div>
+    </div>
+  );
+}
+
+/**
+ * Component to playback processed audio (with filters) after recording.
+ * Accepts:
+ *   - recBlob: original recording Blob
+ *   - selectedFilters: array of filter names (e.g. ["reverb", ...])
+ *   - FILTERS: filter meta (label, value, icon)
+ */
+import React, { useEffect, useState } from "react";
+import { applyFiltersToBlob } from "../utils/audioFilters";
+
+// PUBLIC_INTERFACE
+function ApplyFiltersPlaybackBlock({ recBlob, selectedFilters, FILTERS }) {
+  const [filteredUrl, setFilteredUrl] = useState();
+  const [status, setStatus] = useState("processing"); // "processing", "ready", "error"
+
+  useEffect(() => {
+    let alive = true;
+    setStatus("processing");
+    setFilteredUrl();
+    (async () => {
+      try {
+        if (!recBlob) {
+          setStatus("error");
+          return;
+        }
+        if (selectedFilters && selectedFilters.length > 0) {
+          const filtered = await applyFiltersToBlob(recBlob, selectedFilters);
+          if (alive) {
+            setFilteredUrl(filtered);
+            setStatus("ready");
+          }
+        } else {
+          setFilteredUrl(URL.createObjectURL(recBlob));
+          setStatus("ready");
+        }
+      } catch (e) {
+        setStatus("error");
+      }
+    })();
+    return () => {
+      alive = false;
+      if (filteredUrl) URL.revokeObjectURL(filteredUrl);
+    };
+    // Only react to new blobs or filter settings
+    // eslint-disable-next-line
+  }, [recBlob, JSON.stringify(selectedFilters)]);
+
+  return (
+    <div style={{
+      marginTop: 18,
+      color: "#6fffad",
+      fontSize: 17,
+      textAlign: "center",
+      fontWeight: 500,
+    }} aria-live="polite">
+      <div>
+        Recording complete!
+        <br />
+        {status === "processing" && <div>Processing filters…</div>}
+        {status === "error" && (
+          <span style={{ color: "#FFA500" }}>
+            Failed to process filters. Playing raw audio:
+            <br />
+            <audio controls src={URL.createObjectURL(recBlob)} style={{ marginTop: 9, maxWidth: 260 }} />
+          </span>
+        )}
+        {status === "ready" && (
+          <audio controls src={filteredUrl} style={{ marginTop: 9, maxWidth: 260 }} />
+        )}
+      </div>
+      <br />
+      {selectedFilters.length > 0 && (
+        <span style={{ fontSize: "0.97rem", color: "#a5e2fa" }}>
+          Filters applied: {selectedFilters.map(
+            (val) => FILTERS.find((f) => f.value === val)?.label || val
+          ).join(", ")}
+        </span>
+      )}
     </div>
   );
 }
