@@ -7,50 +7,14 @@ import LyricsDisplay from "../components/LyricsDisplay";
  * PUBLIC_INTERFACE
  * RecordingContainer: Karaoke playback with synchronized lyrics and user microphone recording.
  * Plays karaoke track, syncs lyrics, and records user voice (not backing track) with MediaRecorder.
+ * 
+ * Refactored to dynamically load lyrics and karaoke audio from static assets
+ * - Accepts songId and title (from route params or props)
+ * - Lyrics loaded from "/assets/lyrics_{songid}.json", falls back to demo if missing/invalid
+ * - Karaoke audio from "/assets/karaoke_{songid}.mp3", falls back to demo if missing
  */
 function RecordingContainer({ songId, title }) {
-  // --- Dynamic Karaoke audio and lyrics loading by songId ---
-  // Mock lyrics for several known songs
-  const MOCK_LYRICS_DB = {
-    "1": [
-      { time: 0, text: "Is this the real life?" },
-      { time: 3, text: "Is this just fantasy?" },
-      { time: 7, text: "Caught in a landslide, no escape from reality" },
-      { time: 13, text: "Open your eyes, look up to the skies and see" },
-      { time: 20, text: "I'm just a poor boy, I need no sympathy" },
-      { time: 27, text: "Because I'm easy come, easy go" },
-      { time: 30, text: "Little high, little low" },
-      { time: 33, text: "Any way the wind blows, doesn't really matter to me, to me" }
-    ],
-    "2": [
-      { time: 0, text: "Tell me somethin', girl" },
-      { time: 3, text: "Are you happy in this modern world?" },
-      { time: 7, text: "Or do you need more?" },
-      { time: 11, text: "Is there somethin' else you're searchin' for?" }
-    ],
-    "3": [
-      { time: 0, text: "Just a small town girl, living in a lonely world" },
-      { time: 5, text: "She took the midnight train going anywhere" },
-      { time: 9, text: "Just a city boy, born and raised in South Detroit" },
-      { time: 14, text: "He took the midnight train going anywhere" }
-    ],
-    "4": [
-      { time: 0, text: "The snow glows white on the mountain tonight" },
-      { time: 5, text: "Not a footprint to be seen" },
-      { time: 9, text: "A kingdom of isolation" },
-      { time: 13, text: "And it looks like I'm the queen" }
-    ],
-    "5": [
-      { time: 0, text: "This hit, that ice cold" },
-      { time: 3, text: "Michelle Pfeiffer, that white gold" }
-    ],
-    "6": [
-      { time: 0, text: "She was more like a beauty queen from a movie scene" },
-      { time: 6, text: "I said, 'Don't mind, but what do you mean, I am the one?'" }
-    ]
-    // Add more as needed for demo
-  };
-
+  // DEMO_FALLBACK
   const DEMO_LYRICS = [
     { time: 0, text: "Demo: Is this the real life?" },
     { time: 3, text: "Demo: Placeholder lyrics for unknown song" }
@@ -63,23 +27,52 @@ function RecordingContainer({ songId, title }) {
   const [audioUrl, setAudioUrl] = useState("");
   const [audioLoadStatus, setAudioLoadStatus] = useState("idle"); // idle/loading/loaded/fail
 
-  // Helper for audio: try /assets/karaoke_{id}.mp3 then fallback
+  // Helper: audio file path by songId (default to demo)
   const getAudioAssetUrl = (songId) =>
     songId ? `/assets/karaoke_${songId}.mp3` : "/assets/karaoke_demo.mp3";
+  // Helper: lyrics file path by songId (default demo)
+  const getLyricsAssetUrl = (songId) =>
+    songId ? `/assets/lyrics_${songId}.json` : "";
 
-  // Lyrics loader
+  // Effect: Load lyrics JSON from asset if possible, otherwise fallback
   useEffect(() => {
+    let isSubscribed = true;
     setLyricsLoadStatus("loading");
-    if (songId && MOCK_LYRICS_DB[songId]) {
-      setLyrics(MOCK_LYRICS_DB[songId]);
-      setLyricsLoadStatus("loaded");
-    } else {
-      setLyrics(DEMO_LYRICS);
-      setLyricsLoadStatus("fallback");
+
+    async function tryFetchLyrics() {
+      if (!songId) {
+        setLyrics(DEMO_LYRICS);
+        setLyricsLoadStatus("fallback");
+        return;
+      }
+      // Try fetch from assets: /assets/lyrics_{songid}.json in public directory
+      try {
+        const res = await fetch(getLyricsAssetUrl(songId));
+        if (!res.ok) throw new Error("Lyrics JSON not found for id " + songId);
+        const data = await res.json();
+        // Validate format: expects [{time, text}]
+        if (!Array.isArray(data) || !data.every(line => "time" in line && "text" in line)) {
+          throw new Error("Lyrics data invalid for " + songId);
+        }
+        if (isSubscribed) {
+          setLyrics(data);
+          setLyricsLoadStatus("loaded");
+        }
+      } catch (e) {
+        // Fallback to demo
+        if (isSubscribed) {
+          setLyrics(DEMO_LYRICS);
+          setLyricsLoadStatus("fallback");
+        }
+      }
     }
+    tryFetchLyrics();
+
     setAudioLoadStatus("loading");
     setAudioUrl(getAudioAssetUrl(songId));
-    // No async file existence check; trusted to fail-over in <audio> onError UI
+    return () => {
+      isSubscribed = false;
+    };
   }, [songId]);
 
   // Karaoke duration
@@ -126,10 +119,17 @@ function RecordingContainer({ songId, title }) {
     audio.addEventListener("loadedmetadata", handleLoaded);
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
+    // Fallback if the audio fails to load: show fail, fallback to demo on audio error
+    const handleAudioFail = () => {
+      setAudioLoadStatus("fail");
+      setAudioUrl("/assets/karaoke_demo.mp3");
+    };
+    audio.addEventListener("error", handleAudioFail);
     return () => {
       audio.removeEventListener("loadedmetadata", handleLoaded);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleAudioFail);
     };
     // eslint-disable-next-line
   }, [audioUrl]);
@@ -329,15 +329,14 @@ function RecordingContainer({ songId, title }) {
           onLoadedMetadata={() => setAudioLoadStatus("loaded")}
         >
           <source src={audioUrl} type="audio/mp3" />
-          <source src="/assets/karaoke_demo.mp3" type="audio/mp3" />
-          <source src="https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3" type="audio/mp3" />
+          {/* fallback is now handled by listening to .onError and setting audioUrl to demo if needed */}
           Sorry, your browser does not support the audio element. Please use a modern browser.
         </audio>
         <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.13rem", marginBottom: 2, textAlign: "center" }}>
           Karaoke Track{" "}
           <span style={{ fontWeight: 400, fontSize: 14, color: "#53f1c9" }}>
             {audioLoadStatus === "fail"
-              ? "Unavailable"
+              ? "Unavailable (Demo fallback playing)"
               : songId
                 ? `Song #${songId}`
                 : "Demo"}
@@ -429,6 +428,11 @@ function RecordingContainer({ songId, title }) {
         {lyricsLoadStatus === "fallback" && (
           <div style={{ color: "#FFA500", textAlign: "center", fontSize: "0.98rem", marginTop: 6 }}>
             Lyrics not found for this song: showing demo lyrics.
+          </div>
+        )}
+        {lyricsLoadStatus === "loaded" && songId && (
+          <div style={{ color: "#69efad", fontSize: "0.92rem", marginTop: 6, textAlign: "center" }}>
+            Loaded lyrics for song #{songId}
           </div>
         )}
       </div>
