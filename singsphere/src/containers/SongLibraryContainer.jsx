@@ -52,6 +52,15 @@ const MOCK_SONGS = [
     artist: "Ed Sheeran",
     album: "Divide",
     coverUrl: ""
+  },
+  // Added Sundari Kannal Oru Sethi
+  {
+    id: "8",
+    title: "Sundari Kannal Oru Sethi",
+    artist: "SPB",
+    album: "Thalapathi",
+    coverUrl: "",
+    composer: "Ilayaraja"
   }
 ];
 

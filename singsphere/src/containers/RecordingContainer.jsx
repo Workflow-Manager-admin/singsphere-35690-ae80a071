@@ -50,6 +50,9 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     "Ae Dil Hai Mushkil": "https://youtu.be/gsTTKvzRMg4?si=T_t79g_56rFJaJur",
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
+    // Added Sundari Kannal mapping
+    "8": "https://youtu.be/AKDP1cbICN8?si=oq6b-Po4-DgTIz-i",
+    "Sundari Kannal Oru Sethi": "https://youtu.be/AKDP1cbICN8?si=oq6b-Po4-DgTIz-i"
   };
 
   // DEMO_FALLBACK
