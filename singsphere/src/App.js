@@ -351,14 +351,19 @@ function NavBar() {
             })()
           : "";
 
+      // Only show "No audio recording found" message and Record Now button when audioUrl is missing
       return (
         <React.Fragment>
           <div style={{ width: "100%", maxWidth: 480, margin: "0 auto 18px auto" }}>
             {audioUrl ? (
-              <audio controls src={audioUrl} style={{ width: "100%" }}>
-                Your browser does not support the audio element.
-              </audio>
+              // Audio exists; show only the player and relevant options (no fallback message or "Record Now")
+              <>
+                <audio controls src={audioUrl} style={{ width: "100%" }}>
+                  Your browser does not support the audio element.
+                </audio>
+              </>
             ) : (
+              // No audio: show the fallback message and a "Record Now" action
               <div
                 style={{
                   color: "#FFA500",
@@ -380,44 +385,49 @@ function NavBar() {
               </div>
             )}
           </div>
-          <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.08rem", textAlign: "center" }}>
-            {safeTitle}
-            {safeArtist && (
-              <span style={{ fontWeight: 400, color: "var(--text-secondary)", marginLeft: 7 }}>
-                by {safeArtist}
-              </span>
-            )}
-          </div>
-          <div style={{ color: "var(--text-secondary)", fontSize: ".96rem", textAlign: "center", margin: "6px 0" }}>
-            Saved: {recordedAtDate}
-          </div>
-          {/* Example: filter and save/download UI (for demonstration, since no real save/download implemented) */}
-          <div style={{ margin: "15px auto 0 auto", textAlign: "center" }}>
-            <button className="btn" style={{ marginRight: 10, background: "var(--base-light)" }} disabled>
-              🎚️ Filters (coming soon)
-            </button>
-            <button className="btn" style={{ background: "#4A90E2", color: "#fff" }} disabled>
-              💾 Save Recording
-            </button>
-          </div>
-          <div style={{ marginTop: 13, textAlign: "center" }}>
-            <Link
-              className="btn btn-large"
-              style={{ margin: "0 auto", background: "linear-gradient(90deg, var(--base-light), #4A90E2)" }}
-              to={
-                selectedRecording.songId
-                  ? `/record/${selectedRecording.songId}`
-                  : "/record"
-              }
-              state={{
-                songId: selectedRecording.songId,
-                title: safeTitle,
-              }}
-              onClick={handleModalClose}
-            >
-              Record Again
-            </Link>
-          </div>
+          {/* Show all meta/info and filter/save UI only if audio is present */}
+          {audioUrl && (
+            <>
+              <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.08rem", textAlign: "center" }}>
+                {safeTitle}
+                {safeArtist && (
+                  <span style={{ fontWeight: 400, color: "var(--text-secondary)", marginLeft: 7 }}>
+                    by {safeArtist}
+                  </span>
+                )}
+              </div>
+              <div style={{ color: "var(--text-secondary)", fontSize: ".96rem", textAlign: "center", margin: "6px 0" }}>
+                Saved: {recordedAtDate}
+              </div>
+              {/* Example: filter and save/download UI (for demonstration, since no real save/download implemented) */}
+              <div style={{ margin: "15px auto 0 auto", textAlign: "center" }}>
+                <button className="btn" style={{ marginRight: 10, background: "var(--base-light)" }} disabled>
+                  🎚️ Filters (coming soon)
+                </button>
+                <button className="btn" style={{ background: "#4A90E2", color: "#fff" }} disabled>
+                  💾 Save Recording
+                </button>
+              </div>
+              <div style={{ marginTop: 13, textAlign: "center" }}>
+                <Link
+                  className="btn btn-large"
+                  style={{ margin: "0 auto", background: "linear-gradient(90deg, var(--base-light), #4A90E2)" }}
+                  to={
+                    selectedRecording.songId
+                      ? `/record/${selectedRecording.songId}`
+                      : "/record"
+                  }
+                  state={{
+                    songId: selectedRecording.songId,
+                    title: safeTitle,
+                  }}
+                  onClick={handleModalClose}
+                >
+                  Record Again
+                </Link>
+              </div>
+            </>
+          )}
         </React.Fragment>
       );
     } catch (ex) {
