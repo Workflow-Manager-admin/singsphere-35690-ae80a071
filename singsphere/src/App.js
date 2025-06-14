@@ -497,6 +497,8 @@ function NavBar() {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', position: "relative" }}>
             <Link to="/" className="btn" style={{ textDecoration: 'none' }}>Home</Link>
             <Link to="/library" className="btn" style={{ textDecoration: 'none' }}>Song Library</Link>
+            {/* The 'Recordings' dropdown and modal have been removed per requirements. */}
+            {/* Recording and playback remain accessible via Song Library and their screens. */}
             {recordings.length === 0 || recordings.length === 1 ? (
               <button
                 type="button"
@@ -510,44 +512,10 @@ function NavBar() {
                 Record
               </button>
             ) : null}
+            {/* For >1 recording, access is only via individual screens; no navbar entry. */}
           </div>
         </div>
       </nav>
-      <ReactModal
-        isOpen={showModal}
-        onRequestClose={handleModalClose}
-        style={{
-          overlay: { background: "rgba(12,24,38,0.88)", zIndex: 2000 },
-          content: {
-            background: "#090d18",
-            borderRadius: "13px",
-            maxWidth: 512,
-            margin: "72px auto",
-            top: 72, left: 0, right: 0, bottom: "auto",
-            border: "2px solid var(--base-light)",
-            boxShadow: "0 4px 28px #0fa",
-            padding: "24px 18px 18px"
-          }
-        }}
-        ariaHideApp={false}
-        contentLabel="Your Recording"
-      >
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            className="btn"
-            style={{ padding: "4.5px 16px", minWidth: 0, fontSize: "1.1em", background: "#f53e1299", color: "#fff", marginBottom: 2 }}
-            onClick={handleModalClose}
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
-        <h2 className="title" style={{ fontSize: "2.2rem", margin: "1px 0 9px 0", textAlign: "center" }}>
-          Your Recording
-        </h2>
-        {/* Defensive: Never return a non-JSX object/array as modal content */}
-        {safeRenderModalContent(renderModalContent())}
-      </ReactModal>
     </>
   );
 }
