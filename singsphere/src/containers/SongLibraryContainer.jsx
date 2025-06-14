@@ -15,7 +15,7 @@ const MOCK_SONGS = [
     id: "2",
     title: "Pirai Thedum Iravile",
     artist: "Saindhavi",
-    album: "N/A",
+    album: "Mayakkam Enna",
     coverUrl: ""
   },
   {
