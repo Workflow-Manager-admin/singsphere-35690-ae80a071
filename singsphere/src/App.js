@@ -15,7 +15,6 @@ function NavBar() {
           <Link to="/" className="btn" style={{ textDecoration: 'none' }}>Home</Link>
           <Link to="/library" className="btn" style={{ textDecoration: 'none' }}>Song Library</Link>
           <Link to="/record" className="btn" style={{ textDecoration: 'none' }}>Record</Link>
-          <Link to="/playback" className="btn" style={{ textDecoration: 'none' }}>Playback</Link>
         </div>
       </div>
     </nav>
