@@ -9,23 +9,81 @@ import LyricsDisplay from "../components/LyricsDisplay";
  * Plays karaoke track, syncs lyrics, and records user voice (not backing track) with MediaRecorder.
  */
 function RecordingContainer({ songId, title }) {
-  // Demo Karaoke audio and lyrics
-  // Use browser-compatible asset loading; Assume public/assets/karaoke_demo.mp3 is served at /assets/karaoke_demo.mp3
-  const DEFAULT_KARAOKE_AUDIO = "/assets/karaoke_demo.mp3";
-  const REMOTE_KARAOKE_AUDIO = "https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3";
-  // Try default, fallback to remote if not found (browser does this naturally)
-  const MOCK_KARAOKE_AUDIO_URL = DEFAULT_KARAOKE_AUDIO;
-  const MOCK_LYRICS = [
-    { time: 0, text: "Is this the real life?" },
-    { time: 3, text: "Is this just fantasy?" },
-    { time: 7, text: "Caught in a landslide, no escape from reality" },
-    { time: 13, text: "Open your eyes, look up to the skies and see" },
-    { time: 20, text: "I'm just a poor boy, I need no sympathy" },
-    { time: 27, text: "Because I'm easy come, easy go" },
-    { time: 30, text: "Little high, little low" },
-    { time: 33, text: "Any way the wind blows, doesn't really matter to me, to me" }
+  // --- Dynamic Karaoke audio and lyrics loading by songId ---
+  // Mock lyrics for several known songs
+  const MOCK_LYRICS_DB = {
+    "1": [
+      { time: 0, text: "Is this the real life?" },
+      { time: 3, text: "Is this just fantasy?" },
+      { time: 7, text: "Caught in a landslide, no escape from reality" },
+      { time: 13, text: "Open your eyes, look up to the skies and see" },
+      { time: 20, text: "I'm just a poor boy, I need no sympathy" },
+      { time: 27, text: "Because I'm easy come, easy go" },
+      { time: 30, text: "Little high, little low" },
+      { time: 33, text: "Any way the wind blows, doesn't really matter to me, to me" }
+    ],
+    "2": [
+      { time: 0, text: "Tell me somethin', girl" },
+      { time: 3, text: "Are you happy in this modern world?" },
+      { time: 7, text: "Or do you need more?" },
+      { time: 11, text: "Is there somethin' else you're searchin' for?" }
+    ],
+    "3": [
+      { time: 0, text: "Just a small town girl, living in a lonely world" },
+      { time: 5, text: "She took the midnight train going anywhere" },
+      { time: 9, text: "Just a city boy, born and raised in South Detroit" },
+      { time: 14, text: "He took the midnight train going anywhere" }
+    ],
+    "4": [
+      { time: 0, text: "The snow glows white on the mountain tonight" },
+      { time: 5, text: "Not a footprint to be seen" },
+      { time: 9, text: "A kingdom of isolation" },
+      { time: 13, text: "And it looks like I'm the queen" }
+    ],
+    "5": [
+      { time: 0, text: "This hit, that ice cold" },
+      { time: 3, text: "Michelle Pfeiffer, that white gold" }
+    ],
+    "6": [
+      { time: 0, text: "She was more like a beauty queen from a movie scene" },
+      { time: 6, text: "I said, 'Don't mind, but what do you mean, I am the one?'" }
+    ]
+    // Add more as needed for demo
+  };
+
+  const DEMO_LYRICS = [
+    { time: 0, text: "Demo: Is this the real life?" },
+    { time: 3, text: "Demo: Placeholder lyrics for unknown song" }
   ];
-  const duration = MOCK_LYRICS.length > 0 ? MOCK_LYRICS[MOCK_LYRICS.length - 1].time + 5 : 40;
+
+  const [lyrics, setLyrics] = useState([]);
+  const [lyricsLoadStatus, setLyricsLoadStatus] = useState("idle"); // idle/loading/loaded/fallback
+
+  // Audio
+  const [audioUrl, setAudioUrl] = useState("");
+  const [audioLoadStatus, setAudioLoadStatus] = useState("idle"); // idle/loading/loaded/fail
+
+  // Helper for audio: try /assets/karaoke_{id}.mp3 then fallback
+  const getAudioAssetUrl = (songId) =>
+    songId ? `/assets/karaoke_${songId}.mp3` : "/assets/karaoke_demo.mp3";
+
+  // Lyrics loader
+  useEffect(() => {
+    setLyricsLoadStatus("loading");
+    if (songId && MOCK_LYRICS_DB[songId]) {
+      setLyrics(MOCK_LYRICS_DB[songId]);
+      setLyricsLoadStatus("loaded");
+    } else {
+      setLyrics(DEMO_LYRICS);
+      setLyricsLoadStatus("fallback");
+    }
+    setAudioLoadStatus("loading");
+    setAudioUrl(getAudioAssetUrl(songId));
+    // No async file existence check; trusted to fail-over in <audio> onError UI
+  }, [songId]);
+
+  // Karaoke duration
+  const karaokeDuration = lyrics.length > 0 ? lyrics[lyrics.length - 1].time + 5 : 40;
 
   // Karaoke playback state
   const audioRef = useRef(null);
@@ -33,7 +91,7 @@ function RecordingContainer({ songId, title }) {
   const [audioReady, setAudioReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(duration);
+  const [audioDuration, setAudioDuration] = useState(karaokeDuration);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -47,23 +105,12 @@ function RecordingContainer({ songId, title }) {
   const micStreamRef = useRef(null);
   const recordChunksRef = useRef([]);
 
-  // Filters (mock only)
-  const FILTERS = [
-    { label: "Reverb", value: "reverb", icon: "🌊" },
-    { label: "Auto-Tune", value: "autotune", icon: "🎶" },
-    { label: "Robot", value: "robot", icon: "🤖" }
-  ];
-  const [selectedFilters, setSelectedFilters] = useState([]);
-  function handleFiltersChange(newSelection) {
-    setSelectedFilters(newSelection);
-  }
-
-  // Karaoke audio events and syncing
+  // Karaoke audio events and syncing, update duration based on loaded song
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     const handleLoaded = () => {
-      setAudioDuration(audio.duration);
+      setAudioDuration(audio.duration || karaokeDuration);
       setAudioReady(true);
     };
     const handleTimeUpdate = () => {
@@ -85,7 +132,7 @@ function RecordingContainer({ songId, title }) {
       audio.removeEventListener("ended", handleEnded);
     };
     // eslint-disable-next-line
-  }, []);
+  }, [audioUrl]);
 
   // Play/Pause karaoke and optionally pause/resume the mic recording
   function handlePlayPause() {
@@ -228,6 +275,17 @@ function RecordingContainer({ songId, title }) {
     // eslint-disable-next-line
   }, []);
 
+  // Filters (mock only)
+  const FILTERS = [
+    { label: "Reverb", value: "reverb", icon: "🌊" },
+    { label: "Auto-Tune", value: "autotune", icon: "🎶" },
+    { label: "Robot", value: "robot", icon: "🤖" }
+  ];
+  const [selectedFilters, setSelectedFilters] = useState([]);
+  function handleFiltersChange(newSelection) {
+    setSelectedFilters(newSelection);
+  }
+
   function formatTime(secs) {
     if (!secs && secs !== 0) return "--:--";
     const min = Math.floor(secs / 60);
@@ -267,14 +325,29 @@ function RecordingContainer({ songId, title }) {
           onPause={() => setIsPlaying(false)}
           style={{ display: "none" }}
           aria-label="Karaoke audio track"
+          onError={() => setAudioLoadStatus("fail")}
+          onLoadedMetadata={() => setAudioLoadStatus("loaded")}
         >
-          <source src={MOCK_KARAOKE_AUDIO_URL} type="audio/mp3" />
-          <source src={REMOTE_KARAOKE_AUDIO} type="audio/mp3" />
+          <source src={audioUrl} type="audio/mp3" />
+          <source src="/assets/karaoke_demo.mp3" type="audio/mp3" />
+          <source src="https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3" type="audio/mp3" />
           Sorry, your browser does not support the audio element. Please use a modern browser.
         </audio>
         <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.13rem", marginBottom: 2, textAlign: "center" }}>
-          Karaoke Track <span style={{ fontWeight: 400, fontSize: 14, color: "#53f1c9" }}>Demo</span>
+          Karaoke Track{" "}
+          <span style={{ fontWeight: 400, fontSize: 14, color: "#53f1c9" }}>
+            {audioLoadStatus === "fail"
+              ? "Unavailable"
+              : songId
+                ? `Song #${songId}`
+                : "Demo"}
+          </span>
         </div>
+        {audioLoadStatus === "fail" && (
+          <div style={{ color: "#FFA500", textAlign: "center", fontSize: "1.01rem", margin: "6px 0" }}>
+            Karaoke audio not found for this song.<br />Fallback to demo.
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 16, justifyContent: "center" }}>
           <button
             className="btn"
@@ -352,7 +425,12 @@ function RecordingContainer({ songId, title }) {
         isBlocked={isBlocked}
       />
       <div style={{ marginTop: 21, marginBottom: 5 }}>
-        <LyricsDisplay lyrics={MOCK_LYRICS} currentTime={audioCurrentTime} />
+        <LyricsDisplay lyrics={lyrics} currentTime={audioCurrentTime} />
+        {lyricsLoadStatus === "fallback" && (
+          <div style={{ color: "#FFA500", textAlign: "center", fontSize: "0.98rem", marginTop: 6 }}>
+            Lyrics not found for this song: showing demo lyrics.
+          </div>
+        )}
       </div>
       {/* Feedback: show voice recording (not karaoke mix) if available */}
       {!isRecording && recBlob && !isBlocked && (
