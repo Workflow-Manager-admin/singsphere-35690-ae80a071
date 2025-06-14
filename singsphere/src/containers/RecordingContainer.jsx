@@ -8,10 +8,10 @@ import LyricsDisplay from "../components/LyricsDisplay";
  * RecordingContainer: Karaoke via YouTube video with synchronized lyrics and user microphone recording.
  * Plays YouTube karaoke video, syncs lyrics (demo), and records user voice (mic via MediaRecorder).
  * 
- * - Expects a `youtubeUrl` prop (or uses demo video). Extracts video ID and embeds YT IFrame.
+ * - For "Shape of You", uses designated YouTube video: https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us
  * - Video playback is triggered (with audio) when user clicks Record.
- * - The component reacts to new provided YouTube URLs.
- * - Lyrics display is retained for demo.
+ * - Accepts youtubeUrl prop (has override), otherwise automatically injects video for Shape of You.
+ * - Lyrics display is retained for demo purposes.
  */
 
 // Utility: Extract YouTube Video ID (supports various link formats)
@@ -30,31 +30,42 @@ function extractYouTubeVideoId(url) {
 }
 
 function RecordingContainer({ songId, title, youtubeUrl }) {
+  // Karaoke video mapping for specific songs (Shape of You)
+  const SONG_KARAOKE_VIDEO_MAP = {
+    // ID or title
+    "7": "https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us",
+    "Shape of You": "https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us",
+  };
+
   // DEMO_FALLBACK
   const DEMO_LYRICS = [
     { time: 0, text: "Demo: Is this the real life?" },
     { time: 3, text: "Demo: Placeholder lyrics for unknown song" }
   ];
 
-  // Default demo karaoke video (can be replaced/passed via prop or app state)
-  const DEFAULT_YOUTUBE_URL = "https://www.youtube.com/watch?v=Zi_XLOBDo_Y";
-  // State to control the active karaoke YouTube URL
-  const [activeYoutubeUrl, setActiveYoutubeUrl] = useState(
-    youtubeUrl || DEFAULT_YOUTUBE_URL
-  );
+  // Find the intended karaoke YouTube link, with override for "Shape of You"
+  let karaokeYoutubeUrl = youtubeUrl;
+  if (!karaokeYoutubeUrl) {
+    if (songId && SONG_KARAOKE_VIDEO_MAP[songId])
+      karaokeYoutubeUrl = SONG_KARAOKE_VIDEO_MAP[songId];
+    else if (title && SONG_KARAOKE_VIDEO_MAP[title])
+      karaokeYoutubeUrl = SONG_KARAOKE_VIDEO_MAP[title];
+    else
+      karaokeYoutubeUrl = "https://www.youtube.com/watch?v=Zi_XLOBDo_Y";
+  }
+
+  // State for active karaoke YouTube URL (supports hot update)
+  const [activeYoutubeUrl, setActiveYoutubeUrl] = useState(karaokeYoutubeUrl);
   useEffect(() => {
-    if (youtubeUrl) setActiveYoutubeUrl(youtubeUrl);
-  }, [youtubeUrl]);
+    let newUrl = youtubeUrl;
+    if (!newUrl) {
+      if (songId && SONG_KARAOKE_VIDEO_MAP[songId]) newUrl = SONG_KARAOKE_VIDEO_MAP[songId];
+      else if (title && SONG_KARAOKE_VIDEO_MAP[title]) newUrl = SONG_KARAOKE_VIDEO_MAP[title];
+      else newUrl = "https://www.youtube.com/watch?v=Zi_XLOBDo_Y";
+    }
+    setActiveYoutubeUrl(newUrl);
+  }, [songId, title, youtubeUrl]);
   const youtubeVideoId = extractYouTubeVideoId(activeYoutubeUrl);
-  // For extensibility: allow live editing/input of URL (currently commented out)
-  /*
-  <input
-    type="text"
-    value={activeYoutubeUrl}
-    onChange={e => setActiveYoutubeUrl(e.target.value)}
-    placeholder="Paste YouTube Karaoke link here"
-  />
-  */
 
   // Lyrics state (demo-only)
   const [lyrics, setLyrics] = useState([]);
@@ -234,7 +245,7 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
         </span>
       </div>
 
-      {/* YouTube player embed area */}
+      {/* Karaoke video for Shape of You uses Youtube https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us */}
       <div
         style={{
           width: "100%",
