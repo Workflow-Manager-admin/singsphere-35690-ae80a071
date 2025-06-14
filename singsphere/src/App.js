@@ -61,18 +61,12 @@ function Recording() {
   );
 }
 
+import PlaybackContainer from "./containers/PlaybackContainer";
+
 // PUBLIC_INTERFACE
 function Playback() {
-  /** The playback screen stub - for future playback and lyrics. */
-  return (
-    <div className="container" style={{ paddingTop: 120 }}>
-      <h2 className="title">Playback Performance</h2>
-      <div className="description">
-        Listen and share your performance, with real-time lyrics sync.
-      </div>
-      {/* Playback UI and lyrics sync will go here */}
-    </div>
-  );
+  /** The playback screen rendering lyrics sync and mock playback. */
+  return <PlaybackContainer />;
 }
 
 // PUBLIC_INTERFACE
