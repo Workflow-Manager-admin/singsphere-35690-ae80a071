@@ -122,44 +122,57 @@ function NavBar() {
           }}
         >
           {Array.isArray(recordings) &&
-            recordings.map((rec, i) => {
+            recordings.map((rawRec, i) => {
+              // Defensive block: ensure rec is an object and not accidentally null/primitive
+              const rec = typeof rawRec === "object" && rawRec !== null ? rawRec : {};
               // Defensive: Avoid passing non-strings/objects directly to React, coerce on error
-              const title =
-                typeof rec?.title === "string"
-                  ? rec.title
-                  : (rec && rec.title !== undefined
-                      ? String(rec.title)
-                      : "Untitled");
-              const artist =
-                rec && rec.artist && typeof rec.artist === "string"
-                  ? rec.artist
-                  : (rec && rec.artist !== undefined
-                      ? String(rec.artist)
-                      : null);
+              let title;
+              if (typeof rec.title === "string") title = rec.title;
+              else if (rec.title !== undefined) title = String(rec.title);
+              else title = "Untitled";
+              let artist = null;
+              if (typeof rec.artist === "string") artist = rec.artist;
+              else if (rec.artist !== undefined) artist = String(rec.artist);
 
+              // Defensive: unique key, fallback to index if not enough entropy
+              // Never return an object here
               return (
                 <button
-                  key={`${rec && rec.recordedAt ? rec.recordedAt : ""}${rec && rec.songId ? rec.songId : ""}_${i}`}
+                  // Defensive - always a string key
+                  key={
+                    [
+                      rec && rec.recordedAt ? String(rec.recordedAt) : "",
+                      rec && rec.songId ? String(rec.songId) : "",
+                      i,
+                    ].join("_")
+                  }
                   className="btn"
                   style={{
                     display: "block",
                     width: "100%",
-                    background: selectedRecording === rec ? "var(--base-light)" : "rgba(20,50,130,0.26)",
-                    color: selectedRecording === rec ? "#fff" : "#bfefff",
+                    background:
+                      selectedRecording === rec
+                        ? "var(--base-light)"
+                        : "rgba(20,50,130,0.26)",
+                    color:
+                      selectedRecording === rec ? "#fff" : "#bfefff",
                     textAlign: "left",
                     fontWeight: selectedRecording === rec ? 700 : 500,
                     fontSize: "1rem",
                     border: "none",
-                    borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                    borderBottom:
+                      i !== recordings.length - 1
+                        ? "1px solid #04ffff22"
+                        : "none",
                     borderRadius: 0,
                     padding: "13px 16px",
                     cursor: "pointer"
                   }}
-                  onClick={handleRecordingMenuSelect.bind(null, rec)}
+                  onClick={e => handleRecordingMenuSelect(rec, e)}
                   tabIndex={0}
                 >
                   <div>
-                    {title}
+                    {typeof title === "string" ? title : "Untitled"}
                     {artist ? (
                       <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
                         by {artist}
@@ -167,7 +180,12 @@ function NavBar() {
                     ) : null}
                   </div>
                   <div style={{ fontSize: ".93em", color: "#53ffee" }}>
-                    Saved: {rec && rec.recordedAt ? new Date(rec.recordedAt).toLocaleString() : ""}
+                    Saved: {(rec && rec.recordedAt)
+                      ? (() => {
+                          const dateVal = new Date(rec.recordedAt);
+                          return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
+                        })()
+                      : ""}
                   </div>
                 </button>
               );
