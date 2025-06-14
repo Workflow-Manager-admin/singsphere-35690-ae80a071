@@ -2,16 +2,20 @@ import React, { useState, useEffect, useRef } from "react";
 import LyricsDisplay from "../components/LyricsDisplay";
 import PlaybackControls from "../components/PlaybackControls";
 
-// Mock lyrics: simple example
+/*
+ * Mock lyrics for Blinding Lights by The Weeknd for demo purposes.
+ */
 const MOCK_LYRICS = [
-  { time: 0, text: "Is this the real life?" },
-  { time: 3, text: "Is this just fantasy?" },
-  { time: 7, text: "Caught in a landslide, no escape from reality" },
-  { time: 13, text: "Open your eyes, look up to the skies and see" },
-  { time: 20, text: "I'm just a poor boy, I need no sympathy" },
-  { time: 27, text: "Because I'm easy come, easy go" },
-  { time: 30, text: "Little high, little low" },
-  { time: 33, text: "Any way the wind blows, doesn't really matter to me, to me" }
+  { time: 0, text: "I've been tryna call" },
+  { time: 4, text: "I've been on my own for long enough" },
+  { time: 8, text: "Maybe you can show me how to love, maybe" },
+  { time: 13, text: "I'm going through withdrawals" },
+  { time: 17, text: "You don't even have to do too much" },
+  { time: 21, text: "You can turn me on with just a touch, baby" },
+  { time: 28, text: "I look around and Sin City's cold and empty" },
+  { time: 33, text: "No one's around to judge me" },
+  { time: 37, text: "I can't see clearly when you're gone" },
+  { time: 41, text: "I said, ooh, I'm blinded by the lights" }
 ];
 
 // Demo filter options, reused from Recorder/FilterSelector

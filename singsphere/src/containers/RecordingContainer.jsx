@@ -30,9 +30,11 @@ function extractYouTubeVideoId(url) {
 }
 
 function RecordingContainer({ songId, title, youtubeUrl }) {
-  // Karaoke video mapping for specific songs (Shape of You)
+  // Karaoke video mapping for specific songs (Shape of You, Blinding Lights)
   const SONG_KARAOKE_VIDEO_MAP = {
     // ID or title
+    "1": "https://youtu.be/Cj4hcXZs3Lc?si=Z6URar5MrVQOJX6U", // Blinding Lights by The Weeknd
+    "Blinding Lights": "https://youtu.be/Cj4hcXZs3Lc?si=Z6URar5MrVQOJX6U", // fallback by title
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };

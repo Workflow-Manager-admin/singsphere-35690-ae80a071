@@ -6,9 +6,9 @@ import { useNavigate } from "react-router-dom";
 const MOCK_SONGS = [
   {
     id: "1",
-    title: "Bohemian Rhapsody",
-    artist: "Queen",
-    album: "A Night at the Opera",
+    title: "Blinding Lights",
+    artist: "The Weeknd",
+    album: "After Hours",
     coverUrl: ""
   },
   {
