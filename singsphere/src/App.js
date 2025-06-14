@@ -546,7 +546,35 @@ function NavBar() {
         <h2 className="title" style={{ fontSize: "2.2rem", margin: "1px 0 9px 0", textAlign: "center" }}>
           {recordings.length > 1 ? "Your Recordings" : "Your Recording"}
         </h2>
-        {renderModalContent()}
+        {/* Defensive: Never return a non-JSX object/array as modal content */}
+        {(() => {
+          const modalContent = renderModalContent();
+          // If a plain object (not a valid React element), show an explicit fallback and log.
+          if (
+            modalContent &&
+            typeof modalContent === "object" &&
+            !Array.isArray(modalContent) &&
+            !(
+              // React elements have a $$typeof property (symbol)
+              (modalContent.$$typeof && typeof modalContent.$$typeof === "symbol")
+            )
+          ) {
+            if (window && window.__REACT_RENDERING_LOG__ !== false) {
+              try {
+                // eslint-disable-next-line no-console
+                console.error("[RUNTIME ERROR] Attempted to render a plain object as a React child in modal. Rendering fallback.", modalContent);
+              } catch (e) {}
+            }
+            return (
+              <div style={{ color: "#f00", textAlign: "center", padding: 18 }}>
+                Internal error: Attempted to render a non-JSX object. Please reload or contact support.<br />
+                <small>(Defensive fallback fired)</small>
+              </div>
+            );
+          }
+          // Otherwise, render as normal (primitives, array of JSX, or valid React element)
+          return modalContent;
+        })()}
       </ReactModal>
     </>
   );
