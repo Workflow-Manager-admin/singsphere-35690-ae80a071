@@ -22,14 +22,14 @@ const MOCK_SONGS = [
     id: "3",
     title: "Oru Paadhi Kadhavu Neeyadi",
     artist: "G V Prakash Kumar",
-    album: "N/A",
+    album: "Thaandavam",
     coverUrl: ""
   },
   {
     id: "4",
     title: "Ennai Konjam Maatri",
     artist: "Harris Jayaraj",
-    album: "Anniyan",
+    album: "Kaakha Kaakha",
     coverUrl: ""
   },
   {
