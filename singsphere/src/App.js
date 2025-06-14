@@ -48,11 +48,21 @@ function SongLibrary() {
 }
 
 import RecordingContainer from "./containers/RecordingContainer";
+import { useParams, useLocation } from "react-router-dom";
 
 // PUBLIC_INTERFACE
 function Recording() {
-  /** The recording interface renders the RecordingContainer with controls. */
-  return <RecordingContainer />;
+  /**
+   * The recording interface rendering RecordingContainer.
+   * Accepts /record/:songId as param, passes songId/title to RecordingContainer to load correct lyrics/audio.
+   */
+  const params = useParams();
+  const location = useLocation();
+  // songId may come from either URL param or navigation state
+  const songId = params.songId || (location.state && location.state.songId);
+  const title = (location.state && location.state.title) || "";
+
+  return <RecordingContainer songId={songId} title={title} />;
 }
 
 import PlaybackContainer from "./containers/PlaybackContainer";
@@ -77,9 +87,11 @@ function NotFound() {
   );
 }
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE - App root with routing and persistent navigation bar.
+ * Adds dynamic /record/:songId support for song-specific recording.
+ */
 function App() {
-  /** App root with routing and persistent navigation bar. */
   return (
     <Router>
       <div className="app">
@@ -88,6 +100,9 @@ function App() {
           <Routes>
             <Route path="/" element={<Homepage />} />
             <Route path="/library" element={<SongLibrary />} />
+            {/* Dynamic route for song-specific recording */}
+            <Route path="/record/:songId" element={<Recording />} />
+            {/* Default (global/legacy) recording page */}
             <Route path="/record" element={<Recording />} />
             <Route path="/playback" element={<Playback />} />
             <Route path="*" element={<NotFound />} />

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import SongGrid from "../components/SongGrid";
+import { useNavigate } from "react-router-dom";
 
 // Mock song data
 const MOCK_SONGS = [
@@ -54,13 +55,15 @@ const MOCK_SONGS = [
   }
 ];
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE - SongLibraryContainer lists all songs with Record options.
+ */
 function SongLibraryContainer() {
   /**
    * Container for browsing/searching the song library.
    * Handles state for search input and passes filtered data to SongGrid.
+   * Now includes navigation to Recording screen for the selected song via Record.
    */
-
   const [search, setSearch] = useState("");
   const [songs] = useState(MOCK_SONGS);
 
@@ -77,12 +80,22 @@ function SongLibraryContainer() {
     });
   }, [search, songs]);
 
-  // Called when user clicks on a song
+  const navigate = useNavigate();
+
+  // Called when user clicks on a song card background
   function handleSongSelect(song) {
-    // Stub for navigation: alert as placeholder
-    alert(`TODO: Navigate to song "${song.title}" (ID: ${song.id})`);
+    // Optionally: could pop up details, but for now do nothing/silent
   }
 
+  // PUBLIC_INTERFACE
+  function handleSongRecord(song) {
+    // Navigates to the recording screen for the selected song
+    navigate(`/record/${song.id}`, { state: { songId: song.id, title: song.title } });
+  }
+  
+  // SongGrid uses SongCard, so we can pass a render function for Record
+  // But for simplicity and visibility, SongCard will handle 'Record' button as default
+  
   return (
     <div className="container" style={{ paddingTop: 120, minHeight: "80vh" }}>
       <h2 className="title" style={{ marginTop: 0 }}>Song Library</h2>
@@ -108,7 +121,11 @@ function SongLibraryContainer() {
         autoFocus
         aria-label="Search songs"
       />
-      <SongGrid songs={filteredSongs} onSongSelect={handleSongSelect} />
+      {/* Pass handleSongRecord for navigation to recording */}
+      <SongGrid
+        songs={filteredSongs}
+        onSongSelect={handleSongRecord}
+      />
     </div>
   );
 }
