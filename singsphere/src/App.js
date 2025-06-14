@@ -497,8 +497,7 @@ function NavBar() {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', position: "relative" }}>
             <Link to="/" className="btn" style={{ textDecoration: 'none' }}>Home</Link>
             <Link to="/library" className="btn" style={{ textDecoration: 'none' }}>Song Library</Link>
-            {renderRecordingDropdown()}
-            {/* If only one or zero recording, single Record button. */}
+            {/* Recordings access removed from nav bar per requirements */}
             {recordings.length <= 1 && (
               <button
                 type="button"
