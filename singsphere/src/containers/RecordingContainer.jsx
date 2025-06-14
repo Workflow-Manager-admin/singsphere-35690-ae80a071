@@ -10,7 +10,13 @@ import LyricsDisplay from "../components/LyricsDisplay";
  */
 function RecordingContainer({ songId, title }) {
   // Demo Karaoke audio and lyrics
-  const MOCK_KARAOKE_AUDIO_URL = "https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3";
+  // Prefer local demo audio in public/assets/karaoke_demo.mp3; fallback to remote if missing
+  const DEFAULT_KARAOKE_AUDIO = process.env.PUBLIC_URL
+    ? `${process.env.PUBLIC_URL}/assets/karaoke_demo.mp3`
+    : "/assets/karaoke_demo.mp3";
+  const REMOTE_KARAOKE_AUDIO = "https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3";
+  // Try default, fallback to remote if not found (browser does this naturally)
+  const MOCK_KARAOKE_AUDIO_URL = DEFAULT_KARAOKE_AUDIO;
   const MOCK_LYRICS = [
     { time: 0, text: "Is this the real life?" },
     { time: 3, text: "Is this just fantasy?" },
@@ -258,12 +264,16 @@ function RecordingContainer({ songId, title }) {
       }}>
         <audio
           ref={audioRef}
-          src={MOCK_KARAOKE_AUDIO_URL}
           preload="auto"
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           style={{ display: "none" }}
-        />
+          aria-label="Karaoke audio track"
+        >
+          <source src={MOCK_KARAOKE_AUDIO_URL} type="audio/mp3" />
+          <source src={REMOTE_KARAOKE_AUDIO} type="audio/mp3" />
+          Sorry, your browser does not support the audio element. Please use a modern browser.
+        </audio>
         <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.13rem", marginBottom: 2, textAlign: "center" }}>
           Karaoke Track <span style={{ fontWeight: 400, fontSize: 14, color: "#53f1c9" }}>Demo</span>
         </div>
