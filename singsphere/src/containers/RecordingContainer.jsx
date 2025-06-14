@@ -12,6 +12,7 @@ import LyricsDisplay from "../components/LyricsDisplay";
  * - Accepts songId and title (from route params or props)
  * - Lyrics loaded from "/assets/lyrics_{songid}.json", falls back to demo if missing/invalid
  * - Karaoke audio from "/assets/karaoke_{songid}.mp3", falls back to demo if missing
+ * - [Special-case]: For "Shape of You", uses Google Drive karaoke link as required.
  */
 function RecordingContainer({ songId, title }) {
   // DEMO_FALLBACK
@@ -27,9 +28,18 @@ function RecordingContainer({ songId, title }) {
   const [audioUrl, setAudioUrl] = useState("");
   const [audioLoadStatus, setAudioLoadStatus] = useState("idle"); // idle/loading/loaded/fail
 
-  // Helper: audio file path by songId (default to demo)
-  const getAudioAssetUrl = (songId) =>
-    songId ? `/assets/karaoke_${songId}.mp3` : "/assets/karaoke_demo.mp3";
+  // Returns karaoke audio src URL for a given song.
+  // For "Shape of You", returns the external Google Drive direct link as required by business logic.
+  const getAudioAssetUrl = (songId, title) => {
+    if (
+      (title && title.trim().toLowerCase() === "shape of you") ||
+      (songId && songId === "7") // SongLibraryContainer mock data id for 'Shape of You'
+    ) {
+      // Provided Google Drive direct download link (special case)
+      return "https://drive.google.com/uc?export=download&id=1k_cnpqL_wfSw-ZmAmNUtggirUcWDMj_M";
+    }
+    return songId ? `/assets/karaoke_${songId}.mp3` : "/assets/karaoke_demo.mp3";
+  };
   // Helper: lyrics file path by songId (default demo)
   const getLyricsAssetUrl = (songId) =>
     songId ? `/assets/lyrics_${songId}.json` : "";
@@ -69,11 +79,11 @@ function RecordingContainer({ songId, title }) {
     tryFetchLyrics();
 
     setAudioLoadStatus("loading");
-    setAudioUrl(getAudioAssetUrl(songId));
+    setAudioUrl(getAudioAssetUrl(songId, title));
     return () => {
       isSubscribed = false;
     };
-  }, [songId]);
+  }, [songId, title]);
 
   // Karaoke duration
   const karaokeDuration = lyrics.length > 0 ? lyrics[lyrics.length - 1].time + 5 : 40;
@@ -460,6 +470,20 @@ function RecordingContainer({ songId, title }) {
             Karaoke audio not found for this song.<br />Fallback to demo.
           </div>
         )}
+        {/* Banner showing usage of Google Drive link for Shape of You */}
+        {((title && title.trim().toLowerCase() === "shape of you") || (songId === "7")) && (
+          <div style={{
+            color: "#4A90E2",
+            background: "#182B3F",
+            padding: "8px 12px",
+            borderRadius: 8,
+            textAlign: "center",
+            fontSize: "0.99rem",
+            margin: "10px 0 2px 0"
+          }}>
+            Using external karaoke audio for 'Shape of You' via Google Drive link.
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 16, justifyContent: "center" }}>
           <button
             className="btn"
@@ -467,11 +491,9 @@ function RecordingContainer({ songId, title }) {
             onClick={handlePlayPause}
             disabled={isBlocked || isAudioActionPending}
           >
-            {isPlaying ? (
-              <><span style={{ fontSize: 18, marginRight: 7 }}>⏸</span> Pause</>
-            ) : (
-              <><span style={{ fontSize: 18, marginRight: 7 }}>▶️</span> {audioCurrentTime > 0 && audioCurrentTime < audioDuration ? "Resume" : "Play"}</>
-            )}
+            {isPlaying ? (<><span style={{ fontSize: 18, marginRight: 7 }}>⏸</span> Pause</>)
+              : (<><span style={{ fontSize: 18, marginRight: 7 }}>▶️</span> {audioCurrentTime > 0 && audioCurrentTime < audioDuration ? "Resume" : "Play"}</>)
+            }
           </button>
           <button
             className="btn"
