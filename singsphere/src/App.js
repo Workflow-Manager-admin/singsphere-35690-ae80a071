@@ -497,8 +497,7 @@ function NavBar() {
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', position: "relative" }}>
             <Link to="/" className="btn" style={{ textDecoration: 'none' }}>Home</Link>
             <Link to="/library" className="btn" style={{ textDecoration: 'none' }}>Song Library</Link>
-            {/* Recordings access removed from nav bar per requirements */}
-            {recordings.length <= 1 && (
+            {recordings.length === 0 || recordings.length === 1 ? (
               <button
                 type="button"
                 className="btn"
@@ -510,7 +509,7 @@ function NavBar() {
               >
                 Record
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       </nav>
@@ -544,7 +543,7 @@ function NavBar() {
           </button>
         </div>
         <h2 className="title" style={{ fontSize: "2.2rem", margin: "1px 0 9px 0", textAlign: "center" }}>
-          {recordings.length > 1 ? "Your Recordings" : "Your Recording"}
+          Your Recording
         </h2>
         {/* Defensive: Never return a non-JSX object/array as modal content */}
         {safeRenderModalContent(renderModalContent())}
