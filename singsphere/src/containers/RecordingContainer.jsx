@@ -3,18 +3,14 @@ import RecorderControls from "../components/RecorderControls";
 import FilterSelector from "../components/FilterSelector";
 import LyricsDisplay from "../components/LyricsDisplay";
 
-// PUBLIC_INTERFACE
 /**
- * RecordingContainer enhancement:
- * Plays a karaoke audio track when the recording screen loads for the selected song
- * Synchronizes LyricsDisplay highlighting with the audio's playback position
- * Provides audio playback controls (play, pause, seek)
- * (Recording microphone pipeline - next step, not included here)
+ * PUBLIC_INTERFACE
+ * RecordingContainer: Karaoke playback with synchronized lyrics and user microphone recording.
+ * Plays karaoke track, syncs lyrics, and records user voice (not backing track) with MediaRecorder.
  */
 function RecordingContainer({ songId, title }) {
-  // --- Lyrics and Karaoke Track (mocked for demo) ---
-  // In a real app, these would be fetched based on songId/title.
-  const MOCK_KARAOKE_AUDIO_URL = "https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3"; // Royalty free, replace for actual karaoke audio
+  // Demo Karaoke audio and lyrics
+  const MOCK_KARAOKE_AUDIO_URL = "https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3";
   const MOCK_LYRICS = [
     { time: 0, text: "Is this the real life?" },
     { time: 3, text: "Is this just fantasy?" },
@@ -27,7 +23,7 @@ function RecordingContainer({ songId, title }) {
   ];
   const duration = MOCK_LYRICS.length > 0 ? MOCK_LYRICS[MOCK_LYRICS.length - 1].time + 5 : 40;
 
-  // --- Audio Playback State/Refs ---
+  // Karaoke playback state
   const audioRef = useRef(null);
   const seekInputRef = useRef(null);
   const [audioReady, setAudioReady] = useState(false);
@@ -35,26 +31,30 @@ function RecordingContainer({ songId, title }) {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(duration);
 
-  // --- Recording state (as-is for demo) ---
+  // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const [durationRec, setDurationRec] = useState(0);
   const [status, setStatus] = useState("idle");
   const [isBlocked, setIsBlocked] = useState(false);
+  const [recBlob, setRecBlob] = useState(null);
 
-  // Filters state (mock logic)
+  // Controls for MediaRecorder/mic
+  const mediaRecorderRef = useRef(null);
+  const micStreamRef = useRef(null);
+  const recordChunksRef = useRef([]);
+
+  // Filters (mock only)
   const FILTERS = [
     { label: "Reverb", value: "reverb", icon: "🌊" },
     { label: "Auto-Tune", value: "autotune", icon: "🎶" },
     { label: "Robot", value: "robot", icon: "🤖" }
   ];
   const [selectedFilters, setSelectedFilters] = useState([]);
-
   function handleFiltersChange(newSelection) {
     setSelectedFilters(newSelection);
-    // Stub: in real version, might update audio pipeline here.
   }
 
-  // --- Karaoke audio events ---
+  // Karaoke audio events and syncing
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -67,6 +67,10 @@ function RecordingContainer({ songId, title }) {
     };
     const handleEnded = () => {
       setIsPlaying(false);
+      // If recording, auto-stop recording too
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        stopRecording();
+      }
     };
     audio.addEventListener("loadedmetadata", handleLoaded);
     audio.addEventListener("timeupdate", handleTimeUpdate);
@@ -76,19 +80,25 @@ function RecordingContainer({ songId, title }) {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
     };
+    // eslint-disable-next-line
   }, []);
 
-  // --- Audio playback control handlers ---
+  // Play/Pause karaoke and optionally pause/resume the mic recording
   function handlePlayPause() {
     const audio = audioRef.current;
     if (!audio) return;
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
+      if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.pause();
+      }
     } else {
-      // Always play from where it left off.
       audio.play();
       setIsPlaying(true);
+      if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state === "paused") {
+        mediaRecorderRef.current.resume();
+      }
     }
   }
   function handleRestart() {
@@ -97,6 +107,9 @@ function RecordingContainer({ songId, title }) {
       audio.currentTime = 0;
       audio.play();
       setIsPlaying(true);
+      if (isRecording && mediaRecorderRef.current && mediaRecorderRef.current.state !== "recording") {
+        mediaRecorderRef.current.resume();
+      }
     }
   }
   function handleSeek(e) {
@@ -107,52 +120,110 @@ function RecordingContainer({ songId, title }) {
     }
     setAudioCurrentTime(newTime);
   }
-  // Auto play on load for "karaoke" effect (optional - autoplay is often blocked by browser)
+
+  // Reset on songId change
   useEffect(() => {
     setIsPlaying(false);
     setAudioCurrentTime(0);
-    setTimeout(() => {
-      // Try to auto play (browser may block if not user-initiated).
-      // audioRef.current?.play();
-    }, 200);
+    setRecBlob(null);
+    setIsBlocked(false);
+    setStatus("idle");
   }, [songId]);
 
-  // Simulate recording states (for UI demo only)
-  const intervalRef = useRef();
-  const handleStart = () => {
-    setStatus("recording");
+  // Timer for voice recording duration UI
+  const recTimerRef = useRef();
+
+  // PUBLIC_INTERFACE: Start user voice recording along with karaoke playback
+  async function startRecording() {
+    setStatus("starting");
     setIsBlocked(false);
-    setIsRecording(true);
     setDurationRec(0);
-  };
-  const handleStop = () => {
-    setIsRecording(false);
-    setStatus("idle");
-  };
-  useEffect(() => {
-    if (isRecording) {
-      intervalRef.current = setInterval(() => {
+    setRecBlob(null);
+
+    try {
+      // Request user mic (raw/no echo cancellation preferred)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false } });
+      micStreamRef.current = stream;
+      const options = { mimeType: "audio/webm" };
+      const mediaRecorder = new window.MediaRecorder(stream, options);
+      recordChunksRef.current = [];
+      mediaRecorderRef.current = mediaRecorder;
+
+      // On data available (buffer mic chunks for final blob)
+      mediaRecorder.ondataavailable = function (evt) {
+        if (evt.data.size > 0) recordChunksRef.current.push(evt.data);
+      };
+      mediaRecorder.onstop = function () {
+        const audioBlob = new Blob(recordChunksRef.current, { type: "audio/webm" });
+        setRecBlob(audioBlob);
+        // Release mic
+        if (micStreamRef.current) {
+          micStreamRef.current.getTracks().forEach((track) => track.stop());
+          micStreamRef.current = null;
+        }
+      };
+
+      // Start karaoke playback if not already playing
+      if (!isPlaying) {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+      // UI states
+      setIsRecording(true);
+      setStatus("recording");
+      setDurationRec(0);
+
+      // Timer for UI
+      recTimerRef.current = setInterval(() => {
         setDurationRec((d) => d + 1);
       }, 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isRecording]);
-  useEffect(() => {
-    // Demo mock blocking (simulate 1/8 requests are blocked for demo)
-    if (!isRecording && Math.random() < 0.12) {
-      setIsBlocked(true);
-      setStatus("blocked");
-    } else if (!isRecording) {
-      setIsBlocked(false);
-      setStatus("idle");
-    }
-  }, [isRecording]);
 
-  // --- Render ---
+      // Actually begin mic record
+      mediaRecorder.start();
+    } catch (err) {
+      setIsBlocked(true);
+      setIsRecording(false);
+      setStatus("blocked");
+      setDurationRec(0);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+      if (recTimerRef.current) clearInterval(recTimerRef.current);
+      return;
+    }
+  }
+
+  // PUBLIC_INTERFACE: Stop mic recording, save blob, release mic
+  function stopRecording() {
+    setIsRecording(false);
+    setStatus("idle");
+    if (recTimerRef.current) clearInterval(recTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
+      micStreamRef.current = null;
+    }
+    // (Optional: stop karaoke audio here)
+  }
+
+  // Cleanup on component unmount: release mic, clear timer
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((track) => track.stop());
+        micStreamRef.current = null;
+      }
+      if (recTimerRef.current) clearInterval(recTimerRef.current);
+    };
+    // eslint-disable-next-line
+  }, []);
+
   function formatTime(secs) {
     if (!secs && secs !== 0) return "--:--";
     const min = Math.floor(secs / 60);
@@ -160,6 +231,7 @@ function RecordingContainer({ songId, title }) {
     return `${min}:${("0" + sec).slice(-2)}`;
   }
 
+  // --- Render ---
   return (
     <div className="container" style={{ paddingTop: 120, paddingBottom: 36, maxWidth: 570, margin: "0 auto" }}>
       <h2 className="title" style={{ marginTop: 0 }}>
@@ -167,7 +239,7 @@ function RecordingContainer({ songId, title }) {
       </h2>
       <div className="description" style={{ marginBottom: 20, textAlign: "center", maxWidth: 500 }}>
         Listen to the karaoke track, sing as it plays, and record your voice!<br />
-        <span style={{color: "#89fff1"}}>{title ? `Now playing: ${title}` : ""}</span>
+        <span style={{ color: "#89fff1" }}>{title ? `Now playing: ${title}` : ""}</span>
       </div>
       {/* Karaoke Audio controls */}
       <div style={{
@@ -192,15 +264,15 @@ function RecordingContainer({ songId, title }) {
           onPause={() => setIsPlaying(false)}
           style={{ display: "none" }}
         />
-        <div style={{fontWeight: 600, color: "#bfefff", fontSize: "1.13rem", marginBottom: 2, textAlign: "center"}}>
-          Karaoke Track <span style={{fontWeight: 400, fontSize: 14, color: "#53f1c9"}}>Demo</span>
+        <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.13rem", marginBottom: 2, textAlign: "center" }}>
+          Karaoke Track <span style={{ fontWeight: 400, fontSize: 14, color: "#53f1c9" }}>Demo</span>
         </div>
-        {/* Controls: play/pause, restart, timer/info */}
-        <div style={{display: "flex", alignItems: "center", gap: 16, justifyContent: "center"}}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, justifyContent: "center" }}>
           <button
             className="btn"
-            style={{fontWeight: 600, minWidth: 72, background: isPlaying ? "#F53E12" : "var(--base-light)"}}
+            style={{ fontWeight: 600, minWidth: 72, background: isPlaying ? "#F53E12" : "var(--base-light)" }}
             onClick={handlePlayPause}
+            disabled={isBlocked}
           >
             {isPlaying ? (
               <><span style={{ fontSize: 18, marginRight: 7 }}>⏸</span> Pause</>
@@ -210,7 +282,7 @@ function RecordingContainer({ songId, title }) {
           </button>
           <button
             className="btn"
-            style={{background: "#F5A623", fontWeight: 600, minWidth: 72, color: "#1A1A1A"}}
+            style={{ background: "#F5A623", fontWeight: 600, minWidth: 72, color: "#1A1A1A" }}
             onClick={handleRestart}
             disabled={audioCurrentTime === 0 && !isPlaying}
           >
@@ -220,7 +292,6 @@ function RecordingContainer({ songId, title }) {
             {formatTime(audioCurrentTime)}/{formatTime(audioDuration)}
           </span>
         </div>
-        {/* Seekbar */}
         <input
           type="range"
           min={0}
@@ -232,18 +303,16 @@ function RecordingContainer({ songId, title }) {
           style={{ width: "100%", marginTop: 9, accentColor: "var(--base-light, #00ffff)" }}
           aria-label="Karaoke seek"
         />
-        <div style={{fontSize: "0.96rem", color: "var(--text-secondary)", marginTop: 2, textAlign: "center"}}>
+        <div style={{ fontSize: "0.96rem", color: "var(--text-secondary)", marginTop: 2, textAlign: "center" }}>
           Drag to skip to part of the song
         </div>
       </div>
-      {/* FilterSelector for voice filters */}
       <FilterSelector
         filters={FILTERS}
         selectedFilters={selectedFilters}
         onChange={handleFiltersChange}
         selectionMode="multiple"
       />
-      {/* Show currently selected filters visually */}
       <div style={{ marginBottom: 18, textAlign: "center" }}>
         <span style={{ color: "#bfefff", fontWeight: 500, fontSize: "1.03rem" }}>
           {selectedFilters.length === 0
@@ -265,37 +334,36 @@ function RecordingContainer({ songId, title }) {
             )}
         </span>
       </div>
-      {/* Recorder controls (mocked) */}
+      {/* Recorder Controls (with mic) */}
       <RecorderControls
         isRecording={isRecording}
-        onStart={handleStart}
-        onStop={handleStop}
+        onStart={startRecording}
+        onStop={stopRecording}
         duration={durationRec}
         status={status}
         isBlocked={isBlocked}
       />
-      {/* Lyrics, synced to audio playback */}
       <div style={{ marginTop: 21, marginBottom: 5 }}>
         <LyricsDisplay lyrics={MOCK_LYRICS} currentTime={audioCurrentTime} />
       </div>
-      {/* Optionally, visual/audio feedback for saved file (mocked) */}
-      {!isRecording && durationRec > 0 && !isBlocked && (
-        <div
-          style={{
-            marginTop: 16,
+      {/* Feedback: show voice recording (not karaoke mix) if available */}
+      {!isRecording && recBlob && !isBlocked && (
+        <div style={{
+            marginTop: 18,
             color: "#6fffad",
             fontSize: 17,
             textAlign: "center",
             fontWeight: 500,
-          }}
-          aria-live="polite"
-        >
-          Recording complete! (Simulated audio file saved)
+          }} aria-live="polite">
+          <div>
+            Recording complete!
+            <br />
+            <audio controls src={URL.createObjectURL(recBlob)} style={{ marginTop: 9, maxWidth: 260 }} />
+          </div>
           <br />
-          {/* Stub: Filters would be applied in actual post-process */}
           {selectedFilters.length > 0 && (
             <span style={{ fontSize: "0.97rem", color: "#a5e2fa" }}>
-              <br />Filters chosen: {selectedFilters.map(
+              Filters chosen: {selectedFilters.map(
                 (val) => FILTERS.find((f) => f.value === val)?.label || val
               ).join(", ")} (mock, not applied to audio)
             </span>
@@ -326,7 +394,8 @@ function RecordingContainer({ songId, title }) {
         }}
       >
         Karaoke audio and lyrics are demo content.<br />
-        Next: layering live mic (recording) in real time with playback!
+        Your voice will be recorded live via your browser mic.<br />
+        <b>Tip</b>: Use earphones to prevent echo/feedback!
       </div>
     </div>
   );
