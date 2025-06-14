@@ -33,8 +33,8 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
   // Karaoke video mapping for specific songs (Shape of You)
   const SONG_KARAOKE_VIDEO_MAP = {
     // ID or title
-    "7": "https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us",
-    "Shape of You": "https://youtu.be/o71_MatpYV0?si=81WB6he6uruAe8us",
+    "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
+    "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };
 
   // DEMO_FALLBACK
