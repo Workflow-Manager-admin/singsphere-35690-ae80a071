@@ -4,32 +4,53 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 import { useState, useEffect, useRef } from 'react';
 
+import ReactModal from 'react-modal';
+
 // PUBLIC_INTERFACE
 function NavBar() {
   /**
    * Persistent navigation bar for SingSphere.
    * - Displays Home and Song Library links.
-   * - 'Record' becomes a dropdown if there are any songs in storage.
-   * Reads user recordings from localStorage dynamically.
+   * - "Record" launches a modal with user's most recent recording's YouTube video if exists.
    */
   const [recordings, setRecordings] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownTimeout = useRef();
+  const [showModal, setShowModal] = useState(false);
+  const [latestRecording, setLatestRecording] = useState(null);
+
+  // Find most recent valid YouTube recording from localStorage
+  function getLatestRecording(allRecs) {
+    if (!Array.isArray(allRecs)) return null;
+    // Sort by recordedAt DESC, find first with valid karaokeYoutubeUrl
+    const sorted = [...allRecs].sort(
+      (a, b) => new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0)
+    );
+    for (const r of sorted) {
+      if (
+        r.karaokeYoutubeUrl &&
+        typeof r.karaokeYoutubeUrl === "string" &&
+        r.karaokeYoutubeUrl.trim().startsWith("http")
+      ) {
+        return r;
+      }
+    }
+    return null;
+  }
 
   // On mount, load recordings from localStorage
   useEffect(() => {
     function loadRecordings() {
       try {
         const items = JSON.parse(localStorage.getItem('userRecordings') || '[]');
-        if (Array.isArray(items)) setRecordings(items);
-        else setRecordings([]);
+        setRecordings(Array.isArray(items) ? items : []);
+        setLatestRecording(getLatestRecording(items));
       } catch {
         setRecordings([]);
+        setLatestRecording(null);
       }
     }
     loadRecordings();
 
-    // Listen for changes made in other tabs/windows (storage event)
+    // Listen for changes (storage event)
     function handleStorageEvent(e) {
       if (e.key === 'userRecordings') loadRecordings();
     }
@@ -37,127 +58,151 @@ function NavBar() {
     return () => window.removeEventListener('storage', handleStorageEvent);
   }, []);
 
-  // Dropdown open/close handlers
-  function openDropdown() {
-    clearTimeout(dropdownTimeout.current);
-    setShowDropdown(true);
+  // Utility to extract YouTube ID
+  function extractYouTubeVideoId(url) {
+    if (!url) return null;
+    const regexes = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+      /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
+    ];
+    for (let regex of regexes) {
+      const match = url.match(regex);
+      if (match && match[1]) return match[1];
+    }
+    return null;
   }
-  function closeDropdown() {
-    dropdownTimeout.current = setTimeout(() => setShowDropdown(false), 180);
+
+  // Modal logic for Record button
+  function handleRecordClick(e) {
+    e.preventDefault();
+    setShowModal(true);
+  }
+  function handleModalClose() {
+    setShowModal(false);
   }
 
   // Render
   return (
-    <nav className="navbar">
-      <div className="container" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
-        <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="logo-symbol">*</span> SingSphere
-        </Link>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', position: "relative" }}>
-          <Link to="/" className="btn" style={{ textDecoration: 'none' }}>Home</Link>
-          <Link to="/library" className="btn" style={{ textDecoration: 'none' }}>Song Library</Link>
-          {/* Recordings dropdown if there are any recorded songs */}
-          {(recordings && recordings.length > 0) ? (
-            <div
-              style={{ position: "relative", minWidth: 0 }}
-              onMouseEnter={openDropdown}
-              onMouseLeave={closeDropdown}
-              tabIndex={0}
-              onFocus={openDropdown}
-              onBlur={closeDropdown}
+    <>
+      <nav className="navbar">
+        <div className="container" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
+          <Link to="/" className="logo" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="logo-symbol">*</span> SingSphere
+          </Link>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', position: "relative" }}>
+            <Link to="/" className="btn" style={{ textDecoration: 'none' }}>Home</Link>
+            <Link to="/library" className="btn" style={{ textDecoration: 'none' }}>Song Library</Link>
+            <button
+              type="button"
+              className="btn"
+              style={{ minWidth: 92 }}
+              onClick={handleRecordClick}
+              title={latestRecording ? "See your latest recording" : "No recording yet"}
             >
-              <button
-                className="btn"
-                style={{ minWidth: 92, position: "relative", zIndex: 2 }}
-                aria-haspopup="listbox"
-                aria-expanded={showDropdown}
-                type="button"
-                onClick={() => setShowDropdown((v) => !v)}
-              >
-                Recordings <span style={{marginLeft: 5, fontSize: 12, verticalAlign: 'middle'}}>▼</span>
-              </button>
-              {showDropdown && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "110%",
-                    right: 0,
-                    background: "rgba(12,24,38,0.97)",
-                    border: "1.5px solid var(--border-color)",
-                    minWidth: 260,
-                    boxShadow: "0 2px 14px #003fba1a",
-                    borderRadius: 9,
-                    padding: "7px 0",
-                    zIndex: 1000,
-                  }}
-                  onMouseEnter={openDropdown}
-                  onMouseLeave={closeDropdown}
-                  role="listbox"
-                  aria-label="Recorded songs"
-                >
-                  {recordings
-                    .filter(rec => rec && (rec.title || rec.songId))
-                    .sort((a, b) => new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0))
-                    .map((rec, idx) => (
-                    <Link
-                      key={rec.songId || rec.title || idx}
-                      to={
-                        rec.songId
-                          ? `/record/${rec.songId}`
-                          : "/record"
-                      }
-                      state={{
-                        songId: rec.songId,
-                        title: rec.title
-                      }}
-                      className="btn"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        width: "100%",
-                        borderRadius: 0,
-                        borderBottom: "1px solid var(--border-color)",
-                        background: "none",
-                        color: "#fff",
-                        textAlign: "left",
-                        boxShadow: "none",
-                        margin: 0,
-                        padding: "11.5px 18px",
-                        fontSize: "1.00rem",
-                        whiteSpace: "normal",
-                        textDecoration: "none",
-                        gap: 0
-                      }}
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      <span>
-                        <b>{rec.title || "Untitled"}</b>
-                        {!!rec.artist && <span style={{ color: "var(--text-secondary)", fontWeight: 400, fontSize: ".96em", marginLeft: 5 }}>by {rec.artist}</span>}
-                      </span>
-                      {!!rec.karaokeYoutubeUrl && (
-                        <span style={{ fontSize: ".93em", color: "#6ceeff" }}>
-                          YouTube: <a href={rec.karaokeYoutubeUrl} style={{ color: "#53ffee", textDecoration: "underline" }} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>Preview</a>
-                        </span>
-                      )}
-                      {!!rec.recordedAt && <span style={{ color: "var(--text-secondary)", fontSize: ".87em" }}>{new Date(rec.recordedAt).toLocaleString()}</span>}
-                    </Link>
-                  ))}
-                  {recordings.length === 0 && (
-                    <span style={{ padding: "10px 18px", color: "var(--text-secondary)" }}>
-                      No recordings found.
-                    </span>
-                  )}
-                </div>
+              Record
+            </button>
+          </div>
+        </div>
+      </nav>
+      <ReactModal
+        isOpen={showModal}
+        onRequestClose={handleModalClose}
+        style={{
+          overlay: { background: "rgba(12,24,38,0.88)", zIndex: 2000 },
+          content: {
+            background: "#090d18",
+            borderRadius: "13px",
+            maxWidth: 512,
+            margin: "72px auto",
+            top: 72, left: 0, right: 0, bottom: "auto",
+            border: "2px solid var(--base-light)",
+            boxShadow: "0 4px 28px #0fa",
+            padding: "24px 18px 18px"
+          }
+        }}
+        ariaHideApp={false}
+        contentLabel="Your Recording"
+      >
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            className="btn"
+            style={{ padding: "4.5px 16px", minWidth: 0, fontSize: "1.1em", background: "#f53e1299", color: "#fff", marginBottom: 2 }}
+            onClick={handleModalClose}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+        <h2 className="title" style={{ fontSize: "2.2rem", margin: "1px 0 9px 0", textAlign: "center" }}>
+          Most Recent Recording
+        </h2>
+        {latestRecording ? (
+          <>
+            {!!extractYouTubeVideoId(latestRecording.karaokeYoutubeUrl) ? (
+              <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
+                <iframe
+                  title="Your Karaoke Recording"
+                  width="100%"
+                  height="100%"
+                  style={{ width: "100%", height: "100%", border: 0, borderRadius: 9, background: "#000" }}
+                  src={`https://www.youtube.com/embed/${extractYouTubeVideoId(latestRecording.karaokeYoutubeUrl)}?modestbranding=1&rel=0&controls=1`}
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <div style={{ color: "#FFA500", fontSize: "1.08rem", textAlign: "center", marginBottom: 14 }}>
+                Could not embed video.<br />Invalid YouTube URL.
+              </div>
+            )}
+            <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.08rem", textAlign: "center" }}>
+              {latestRecording.title || "Untitled"}
+              {latestRecording.artist && (
+                <span style={{ fontWeight: 400, color: "var(--text-secondary)", marginLeft: 7 }}>
+                  by {latestRecording.artist}
+                </span>
               )}
             </div>
-          ) : (
-            // No recordings: simple Record button
-            <Link to="/record" className="btn" style={{ textDecoration: 'none' }}>Record</Link>
-          )}
-        </div>
-      </div>
-    </nav>
+            <div style={{ color: "var(--text-secondary)", fontSize: ".96rem", textAlign: "center", margin: "6px 0" }}>
+              Saved: {latestRecording.recordedAt ? new Date(latestRecording.recordedAt).toLocaleString() : ""}
+            </div>
+            <div style={{ color: "#53ffee", fontSize: "0.98rem", textAlign: "center" }}>
+              <a
+                href={latestRecording.karaokeYoutubeUrl}
+                style={{ textDecoration: "underline", color: "#53ffee" }}
+                target="_blank" rel="noopener noreferrer"
+              >View on YouTube</a>
+            </div>
+            <div style={{ marginTop: 13, textAlign: "center" }}>
+              <Link
+                className="btn btn-large"
+                style={{ margin: "0 auto", background: "linear-gradient(90deg, var(--base-light), #4A90E2)" }}
+                to={
+                  latestRecording.songId
+                    ? `/record/${latestRecording.songId}`
+                    : "/record"
+                }
+                state={{
+                  songId: latestRecording.songId,
+                  title: latestRecording.title,
+                }}
+                onClick={handleModalClose}
+              >
+                Record Again
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
+            No previous recording found.<br />
+            <Link to="/record" className="btn btn-large" onClick={handleModalClose}>
+              Start Recording
+            </Link>
+          </div>
+        )}
+      </ReactModal>
+    </>
   );
 }
 
