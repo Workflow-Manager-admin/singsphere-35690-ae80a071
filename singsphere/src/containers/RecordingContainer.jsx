@@ -328,9 +328,19 @@ function RecordingContainer({ songId, title }) {
         }
       };
 
-      // Start karaoke playback if not already playing
+      // Start karaoke playback if not already playing, and trigger play() explicitly after user action to enable autoplay
       if (!isPlaying) {
         setAudioAction('play');
+        // Browser autoplay policy: only call .play() after user interaction
+        if (audioRef.current) {
+          audioRef.current.play().catch((err) => {
+            // Only log error if not due to interruption, which is normal for policy
+            if (err && err.name !== "AbortError") {
+              // eslint-disable-next-line no-console
+              console.warn("User-interaction-initiated .play() failed:", err);
+            }
+          });
+        }
       }
       // UI states
       setIsRecording(true);
@@ -439,6 +449,9 @@ function RecordingContainer({ songId, title }) {
           aria-label="Karaoke audio track"
           onError={() => setAudioLoadStatus("fail")}
           onLoadedMetadata={() => setAudioLoadStatus("loaded")}
+          // Added autoplay and playsInline for modern browser compliance
+          autoPlay={false}
+          playsInline
           // Defensive: ensure state sync, suppress double-calls
           onPlay={() => {
             setIsPlaying(true);
