@@ -10,10 +10,8 @@ import LyricsDisplay from "../components/LyricsDisplay";
  */
 function RecordingContainer({ songId, title }) {
   // Demo Karaoke audio and lyrics
-  // Prefer local demo audio in public/assets/karaoke_demo.mp3; fallback to remote if missing
-  const DEFAULT_KARAOKE_AUDIO = process.env.PUBLIC_URL
-    ? `${process.env.PUBLIC_URL}/assets/karaoke_demo.mp3`
-    : "/assets/karaoke_demo.mp3";
+  // Use browser-compatible asset loading; Assume public/assets/karaoke_demo.mp3 is served at /assets/karaoke_demo.mp3
+  const DEFAULT_KARAOKE_AUDIO = "/assets/karaoke_demo.mp3";
   const REMOTE_KARAOKE_AUDIO = "https://cdn.pixabay.com/audio/2022/09/27/audio_124b4fa8b2.mp3";
   // Try default, fallback to remote if not found (browser does this naturally)
   const MOCK_KARAOKE_AUDIO_URL = DEFAULT_KARAOKE_AUDIO;
