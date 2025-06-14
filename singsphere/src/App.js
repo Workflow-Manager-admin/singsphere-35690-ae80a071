@@ -143,6 +143,112 @@ function NavBar() {
         );
       } catch (e) {}
     }
+    // PATCH: .map must always produce an array of JSX; flatten, wrap, and filter as redundancy
+    let mappedDropdown = [];
+    if (Array.isArray(recordings) && recordings.length > 0) {
+      mappedDropdown = recordings.map((rawRec, i) => {
+        try {
+          if (typeof rawRec !== "object" || rawRec === null) {
+            return (
+              <div
+                key={`malformed_${i}`}
+                style={{
+                  padding: "13px 16px",
+                  color: "#ffa500",
+                  fontStyle: "italic",
+                  borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                }}
+              >
+                Malformed recording entry
+              </div>
+            );
+          }
+          let title = "Untitled";
+          if (typeof rawRec.title === "string") title = rawRec.title;
+          else if (rawRec.title !== undefined) title = String(rawRec.title);
+
+          let artist = null;
+          if (typeof rawRec.artist === "string") artist = rawRec.artist;
+          else if (rawRec.artist !== undefined) artist = String(rawRec.artist);
+
+          const keyParts = [
+            rawRec && rawRec.recordedAt ? String(rawRec.recordedAt) : "",
+            rawRec && rawRec.songId ? String(rawRec.songId) : "",
+            i,
+          ];
+          const isSelected =
+            selectedRecording && rawRec &&
+            selectedRecording.recordedAt === rawRec.recordedAt &&
+            selectedRecording.songId === rawRec.songId;
+
+          // PATCH: Always only return JSX, never objects or arrays
+          return (
+            <button
+              key={keyParts.join("_")}
+              className="btn"
+              style={{
+                display: "block",
+                width: "100%",
+                background:
+                  isSelected ? "var(--base-light)" : "rgba(20,50,130,0.26)",
+                color: isSelected ? "#fff" : "#bfefff",
+                textAlign: "left",
+                fontWeight: isSelected ? 700 : 500,
+                fontSize: "1rem",
+                border: "none",
+                borderBottom:
+                  i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+                borderRadius: 0,
+                padding: "13px 16px",
+                cursor: "pointer"
+              }}
+              onClick={e => handleRecordingMenuSelect(rawRec, e)}
+              tabIndex={0}
+            >
+              <div>
+                {typeof title === "string" ? title : "Untitled"}
+                {artist ? (
+                  <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
+                    by {artist}
+                  </span>
+                ) : null}
+              </div>
+              <div style={{ fontSize: ".93em", color: "#53ffee" }}>
+                Saved: {rawRec && rawRec.recordedAt
+                  ? (() => {
+                    const dateVal = new Date(rawRec.recordedAt);
+                    return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
+                  })()
+                  : ""}
+              </div>
+            </button>
+          );
+        } catch (err) {
+          return (
+            <div
+              key={`errorrow_${i}`}
+              style={{
+                padding: "13px 16px",
+                color: "#ffa500",
+                fontStyle: "italic",
+                borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
+              }}
+            >
+              Error rendering recording info
+            </div>
+          );
+        }
+      });
+    }
+    // PATCH: If any slot returns array-of-objects or object, wrap in fragment and filter
+    if (!Array.isArray(mappedDropdown) || mappedDropdown.some(el => typeof el === "object" && !React.isValidElement(el))) {
+      // Defensive fallback: render message
+      return (
+        <div style={{ padding: "14px", color: "#f00" }}>
+          Internal error: Unexpected item in recording dropdown.
+        </div>
+      );
+    }
     return (
       <div style={{ position: "relative", display: "inline-block" }}>
         <button
@@ -171,154 +277,10 @@ function NavBar() {
           }}
         >
           {
-            // Array guard: Only .map if array is valid, else fallback JSX
+            // Array guard
             Array.isArray(recordings) && recordings.length > 0 ?
-              // Defensive: always wrap the map in a fragment to prevent accidental array-of-objects risk.
-              React.Children.toArray(
-                recordings.map((rawRec, i) => {
-                  if (window && window.__REACT_RENDERING_LOG__ !== false) {
-                    try { 
-                      // eslint-disable-next-line no-console
-                      console.log(`[TRACE-RENDER] (recordings.map) Index ${i}, Type: ${typeof rawRec}, Raw Value:`, rawRec); 
-                    } catch(e){}
-                  }
-                  // Defensive guarantee: always return valid React element or primitive
-                  try {
-                    // Only objects (not null) are allowed; all others yield a fallback.
-                    if (typeof rawRec !== "object" || rawRec === null) {
-                      if (window && window.__REACT_RENDERING_LOG__ !== false) {
-                        try { 
-                          // eslint-disable-next-line no-console
-                          console.warn(`[TRACE-RENDER] (recordings.map) Malformed non-object entry at index ${i}:`, rawRec); 
-                        } catch(e){}
-                      }
-                      return (
-                        <div
-                          key={`malformed_${i}`}
-                          style={{
-                            padding: "13px 16px",
-                            color: "#ffa500",
-                            fontStyle: "italic",
-                            borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
-                          }}
-                        >
-                          Malformed recording entry
-                        </div>
-                      );
-                    }
-                    // Always coerce title/artist for safe text
-                    let title = "Untitled";
-                    if (typeof rawRec.title === "string") title = rawRec.title;
-                    else if (rawRec.title !== undefined) title = String(rawRec.title);
-
-                    let artist = null;
-                    if (typeof rawRec.artist === "string") artist = rawRec.artist;
-                    else if (rawRec.artist !== undefined) artist = String(rawRec.artist);
-
-                    // Compose a unique React key
-                    const keyParts = [
-                      rawRec && rawRec.recordedAt ? String(rawRec.recordedAt) : "",
-                      rawRec && rawRec.songId ? String(rawRec.songId) : "",
-                      i,
-                    ];
-                    // Highlight selection for UX clarity
-                    const isSelected =
-                      selectedRecording && rawRec &&
-                      selectedRecording.recordedAt === rawRec.recordedAt &&
-                      selectedRecording.songId === rawRec.songId;
-                    
-                    // Only return a button element or fallback, never an array/object
-                    if (window && window.__REACT_RENDERING_LOG__ !== false) {
-                      try { 
-                        // eslint-disable-next-line no-console
-                        console.log(`[TRACE-RENDER] (recordings.map) Returning <button> for index ${i}, key: ${keyParts.join("_")}`, { title, artist, isSelected }); 
-                      } catch(e){}
-                    }
-                    const elem = (
-                      <button
-                        key={keyParts.join("_")}
-                        className="btn"
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          background:
-                            isSelected ? "var(--base-light)" : "rgba(20,50,130,0.26)",
-                          color: isSelected ? "#fff" : "#bfefff",
-                          textAlign: "left",
-                          fontWeight: isSelected ? 700 : 500,
-                          fontSize: "1rem",
-                          border: "none",
-                          borderBottom:
-                            i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
-                          borderRadius: 0,
-                          padding: "13px 16px",
-                          cursor: "pointer"
-                        }}
-                        onClick={e => handleRecordingMenuSelect(rawRec, e)}
-                        tabIndex={0}
-                      >
-                        <div>
-                          {/* Only string or undefined appears as title */}
-                          {typeof title === "string" ? title : "Untitled"}
-                          {artist ? (
-                            <span style={{ fontWeight: 400, color: "#aaa", marginLeft: 7 }}>
-                              by {artist}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div style={{ fontSize: ".93em", color: "#53ffee" }}>
-                          Saved: {rawRec && rawRec.recordedAt
-                            ? (() => {
-                              const dateVal = new Date(rawRec.recordedAt);
-                              return isNaN(dateVal.getTime()) ? "" : dateVal.toLocaleString();
-                            })()
-                            : ""}
-                        </div>
-                      </button>
-                    );
-                    // Additional runtime "paranoia" check: if not string/number/boolean/JSX, forcibly wrap in span
-                    if (
-                      elem != null &&
-                      typeof elem !== "string" &&
-                      typeof elem !== "number" &&
-                      typeof elem !== "boolean" &&
-                      // If not a valid React element (should be!); wrap as <span>
-                      !(elem.$$typeof && typeof elem.$$typeof === "symbol")
-                    ) {
-                      if (window && window.__REACT_RENDERING_LOG__ !== false) {
-                        try {
-                          // eslint-disable-next-line no-console
-                          console.warn("[DEFENSIVE] .map returned non-ReactElement, wrapping with <span>.", elem);
-                        } catch(e){}
-                      }
-                      return <span key={`defensive_wrap_${i}`}>{JSON.stringify(elem)}</span>;
-                    }
-                    return elem;
-                  } catch (err) {
-                    if (window && window.__REACT_RENDERING_LOG__ !== false) {
-                      try { 
-                        // eslint-disable-next-line no-console
-                        console.error(`[ERROR] (recordings.map catch block) at index ${i}:`, err, rawRec); 
-                      } catch(e){}
-                    }
-                    // Catch-all rendering error for a row: always error-fallback JSX
-                    return (
-                      <div
-                        key={`errorrow_${i}`}
-                        style={{
-                          padding: "13px 16px",
-                          color: "#ffa500",
-                          fontStyle: "italic",
-                          borderBottom: i !== recordings.length - 1 ? "1px solid #04ffff22" : "none",
-                        }}
-                      >
-                        Error rendering recording info
-                      </div>
-                    );
-                  }
-                })
-              ) :
-              // If empty recordings, always render a visible fallback.
+              <React.Fragment>{mappedDropdown}</React.Fragment>
+              :
               <div style={{ padding: "15px 0", color: "#ffa500", textAlign: "center" }}>
                 No recordings found.
               </div>
@@ -331,39 +293,12 @@ function NavBar() {
   // Render content inside the recordings modal - returns only valid JSX or primitives.
   // All code paths (null, malformed, embed error, etc) provide robust fallback UI.
   function renderModalContent() {
-    // DEBUG: log selection type and value before branch
-    if (window && window.__REACT_RENDERING_LOG__ !== false) {
-      try {
-        // eslint-disable-next-line no-console
-        console.log(
-          "[TRACE-RENDER] (renderModalContent) Entry. selectedRecording val:",
-          selectedRecording,
-          "typeof:", typeof selectedRecording,
-          "isArray:", Array.isArray(selectedRecording),
-          "isJSX:", selectedRecording && typeof selectedRecording === "object" && selectedRecording.$$typeof ? true : false
-        );
-      } catch (e) {}
-    }
     try {
-      if (window && window.__REACT_RENDERING_LOG__ !== false) {
-        try { 
-          // eslint-disable-next-line no-console
-          console.log("[TRACE-RENDER] (renderModalContent) Checking selection type for main branch..."); 
-        } catch(e){}
-      }
-      // Top-level fallback for no/invalid selection
       if (
         !selectedRecording ||
         typeof selectedRecording !== "object" ||
         (Array.isArray(selectedRecording) && selectedRecording.length === 0)
       ) {
-        if (window && window.__REACT_RENDERING_LOG__ !== false) {
-          try { 
-            // eslint-disable-next-line no-console
-            console.warn("[TRACE-RENDER] (renderModalContent fallback) No valid selectedRecording. Returning fallback modal.", {selectedRecording, recordings}); 
-          } catch(e){}
-        }
-        // If there are no recordings, show a friendly action block
         if (!Array.isArray(recordings) || recordings.length === 0) {
           return (
             <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
@@ -374,7 +309,6 @@ function NavBar() {
             </div>
           );
         }
-        // If some recordings exist but selection is missing/bad, show an error
         return (
           <div style={{ color: "#ffa500", textAlign: "center", padding: 18 }}>
             Error: Recording data could not be loaded.<br />
@@ -389,14 +323,7 @@ function NavBar() {
           ? extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)
           : null;
 
-      // If YouTube ID is invalid, fallback UI
       if (!videoId) {
-        if (window && window.__REACT_RENDERING_LOG__ !== false) {
-          try { 
-            // eslint-disable-next-line no-console
-            console.warn("[TRACE-RENDER] (renderModalContent fallback) YouTube ID is invalid or not found.", selectedRecording?.karaokeYoutubeUrl); 
-          } catch(e){}
-        }
         return (
           <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
             Could not embed YouTube video for this recording.<br />
@@ -410,7 +337,6 @@ function NavBar() {
         );
       }
 
-      // Defensive: For all string displays, coerce or fallback to safe strings
       const safeTitle =
         typeof selectedRecording.title === "string"
           ? selectedRecording.title
@@ -431,9 +357,9 @@ function NavBar() {
             })()
           : "";
 
-      // Main block: All components here are React elements or valid renderable content
-      const modalContent = (
-        <>
+      // PATCH: Always wrap main modal content JSX in React.Fragment, ensure always valid JSX
+      return (
+        <React.Fragment>
           <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
             <iframe
               title="Your Karaoke Recording"
@@ -481,23 +407,9 @@ function NavBar() {
               Record Again
             </Link>
           </div>
-        </>
+        </React.Fragment>
       );
-      if (window && window.__REACT_RENDERING_LOG__ !== false) {
-        try {
-          // eslint-disable-next-line no-console
-          console.log("[TRACE-RENDER] (renderModalContent) Returning main modalContent, type:", typeof modalContent, modalContent);
-        } catch (e) {}
-      }
-      return modalContent;
     } catch (ex) {
-      if (window && window.__REACT_RENDERING_LOG__ !== false) {
-        try { 
-          // eslint-disable-next-line no-console
-          console.error("[ERROR] (renderModalContent catch block):", ex); 
-        } catch(e){}
-      }
-      // Fallback if render throws for any reason: always a visible error block (never a raw object/array)
       return (
         <div style={{ color: "#ffa500", textAlign: "center", fontSize: "1.07rem", padding: 16 }}>
           Error displaying recording details.<br />
@@ -505,6 +417,53 @@ function NavBar() {
         </div>
       );
     }
+  }
+
+  // PATCH: Defensive utility to ensure only valid content rendered
+  function safeRenderModalContent(modalContent) {
+    // Helper: is valid React element
+    function isReactElement(val) {
+      return (
+        typeof val === "object" &&
+        val !== null &&
+        !!val.$$typeof &&
+        (typeof val.$$typeof === "symbol" || typeof val.$$typeof === "number")
+      );
+    }
+    function deepFlatten(arr) {
+      return Array.isArray(arr)
+        ? arr.reduce((acc, val) => acc.concat(deepFlatten(val)), [])
+        : [arr];
+    }
+    if (Array.isArray(modalContent)) {
+      const flat = deepFlatten(modalContent)
+        .filter(
+          (item) =>
+            item == null ||
+            typeof item === "boolean" ||
+            typeof item === "string" ||
+            typeof item === "number" ||
+            isReactElement(item)
+        );
+      return <React.Fragment>{flat}</React.Fragment>;
+    }
+    if (
+      modalContent &&
+      typeof modalContent === "object" &&
+      !Array.isArray(modalContent) &&
+      !isReactElement(modalContent)
+    ) {
+      return (
+        <React.Fragment>
+          <div style={{ color: "#f00", textAlign: "center", padding: 18 }}>
+            Internal error: Attempted to render a non-JSX object as a React child.<br />
+            <small>(Defensive fallback fired)</small>
+          </div>
+        </React.Fragment>
+      );
+    }
+    // Valid primitive or React element
+    return modalContent;
   }
 
   return (
@@ -568,65 +527,7 @@ function NavBar() {
           {recordings.length > 1 ? "Your Recordings" : "Your Recording"}
         </h2>
         {/* Defensive: Never return a non-JSX object/array as modal content */}
-        {(() => {
-          let modalContent = renderModalContent();
-
-          // Helper to check if value is a valid React element
-          function isReactElement(val) {
-            return (
-              typeof val === "object" &&
-              val !== null &&
-              !!val.$$typeof &&
-              (typeof val.$$typeof === "symbol" || typeof val.$$typeof === "number") // symbol recommended, but legacy cases may have number
-            );
-          }
-
-          // Helper to flatten deeply (in case .map or renderModalContent returns nested arrays accidentally)
-          function deepFlatten(arr) {
-            return Array.isArray(arr)
-              ? arr.reduce((acc, val) => acc.concat(deepFlatten(val)), [])
-              : [arr];
-          }
-
-          // If modalContent is an array, flatten deeply and filter out non-renderables except for primitives & valid ReactElement
-          if (Array.isArray(modalContent)) {
-            const flat = deepFlatten(modalContent)
-              .filter(
-                (item) =>
-                  item == null ||
-                  typeof item === "boolean" ||
-                  typeof item === "string" ||
-                  typeof item === "number" ||
-                  isReactElement(item)
-              );
-            return <React.Fragment>{flat}</React.Fragment>;
-          }
-
-          // If modalContent is a plain object (not array, not null, not a valid ReactElement), show fallback
-          if (
-            modalContent &&
-            typeof modalContent === "object" &&
-            !Array.isArray(modalContent) &&
-            !isReactElement(modalContent)
-          ) {
-            if (window && window.__REACT_RENDERING_LOG__ !== false) {
-              try {
-                // eslint-disable-next-line no-console
-                console.error("[RUNTIME ERROR] Attempted to render a plain object as a React child in modal. Rendering fallback.", modalContent);
-              } catch (e) {}
-            }
-            return (
-              <React.Fragment>
-                <div style={{ color: "#f00", textAlign: "center", padding: 18 }}>
-                  Internal error: Attempted to render a non-JSX object as a React child.<br />
-                  <small>(Defensive fallback fired)</small>
-                </div>
-              </React.Fragment>
-            );
-          }
-          // For primitives or valid ReactElement, return as is
-          return modalContent;
-        })()}
+        {safeRenderModalContent(renderModalContent())}
       </ReactModal>
     </>
   );
