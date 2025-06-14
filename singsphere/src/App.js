@@ -115,23 +115,18 @@ function NavBar() {
     // Debug: Log the type and contents of recordings just before render
     if (window && window.__REACT_RENDERING_LOG__ !== false) {
       try {
-        // Only prints if the dev sets window.__REACT_RENDERING_LOG__ !== false in console
         // eslint-disable-next-line no-console
-        console.log(
-          "[DEBUG] renderRecordingDropdown recordings:",
-          Array.isArray(recordings) ? recordings.map((r, i) => ({
-            idx: i,
-            type: typeof r,
-            isArray: Array.isArray(r),
-            isJSX: r && typeof r === "object" && r.$$typeof ? true : false,
-            keys: r && typeof r === "object" ? Object.keys(r) : null,
-            value: r
-          })) : recordings
-        );
+        console.log("[TRACE-RENDER] (renderRecordingDropdown) About to evaluate recording dropdown render. recordings array and typeof:", typeof recordings, recordings);
       } catch (e) {}
     }
+
     // Only show the dropdown if there's >1 valid recording entry.
-    if (!Array.isArray(recordings) || recordings.length <= 1) return null;
+    if (!Array.isArray(recordings) || recordings.length <= 1) {
+      if (window && window.__REACT_RENDERING_LOG__ !== false) {
+        try { console.log("[TRACE-RENDER] (renderRecordingDropdown) recordings array is not valid for dropdown, returning null.", recordings); } catch (e) {}
+      }
+      return null;
+    }
 
     /**
      * Each mapped value in the dropdown is explicitly validated:
@@ -140,6 +135,14 @@ function NavBar() {
      *    - All normal rows return a button; keys are stringified and unique.
      *    - If the input array is empty or null, a fallback UI is shown.
      */
+    if (window && window.__REACT_RENDERING_LOG__ !== false) {
+      try { 
+        console.log(
+          "[TRACE-RENDER] Mapping recordings array for dropdown. About to map:",
+          recordings
+        );
+      } catch (e) {}
+    }
     return (
       <div style={{ position: "relative", display: "inline-block" }}>
         <button
@@ -171,10 +174,22 @@ function NavBar() {
             // Array guard: Only .map if array is valid, else fallback JSX
             Array.isArray(recordings) && recordings.length > 0 ?
               recordings.map((rawRec, i) => {
+                if (window && window.__REACT_RENDERING_LOG__ !== false) {
+                  try { 
+                    // eslint-disable-next-line no-console
+                    console.log(`[TRACE-RENDER] (recordings.map) Index ${i}, Type: ${typeof rawRec}, Raw Value:`, rawRec); 
+                  } catch(e){}
+                }
                 // Defensive guarantee: always return valid React element or primitive
                 try {
                   // Only objects (not null) are allowed; all others yield a fallback.
                   if (typeof rawRec !== "object" || rawRec === null) {
+                    if (window && window.__REACT_RENDERING_LOG__ !== false) {
+                      try { 
+                        // eslint-disable-next-line no-console
+                        console.warn(`[TRACE-RENDER] (recordings.map) Malformed non-object entry at index ${i}:`, rawRec); 
+                      } catch(e){}
+                    }
                     return (
                       <div
                         key={`malformed_${i}`}
@@ -211,6 +226,12 @@ function NavBar() {
                     selectedRecording.songId === rawRec.songId;
                   
                   // Only return a button element or fallback, never an array/object
+                  if (window && window.__REACT_RENDERING_LOG__ !== false) {
+                    try { 
+                      // eslint-disable-next-line no-console
+                      console.log(`[TRACE-RENDER] (recordings.map) Returning <button> for index ${i}, key: ${keyParts.join("_")}`, { title, artist, isSelected }); 
+                    } catch(e){}
+                  }
                   return (
                     <button
                       key={keyParts.join("_")}
@@ -254,6 +275,12 @@ function NavBar() {
                     </button>
                   );
                 } catch (err) {
+                  if (window && window.__REACT_RENDERING_LOG__ !== false) {
+                    try { 
+                      // eslint-disable-next-line no-console
+                      console.error(`[ERROR] (recordings.map catch block) at index ${i}:`, err, rawRec); 
+                    } catch(e){}
+                  }
                   // Catch-all rendering error for a row: always error-fallback JSX
                   return (
                     <div
@@ -288,22 +315,33 @@ function NavBar() {
       try {
         // eslint-disable-next-line no-console
         console.log(
-          "[DEBUG] renderModalContent selectedRecording:",
+          "[TRACE-RENDER] (renderModalContent) Entry. selectedRecording val:",
           selectedRecording,
-          "type:",
-          typeof selectedRecording,
+          "typeof:", typeof selectedRecording,
           "isArray:", Array.isArray(selectedRecording),
           "isJSX:", selectedRecording && typeof selectedRecording === "object" && selectedRecording.$$typeof ? true : false
         );
       } catch (e) {}
     }
     try {
+      if (window && window.__REACT_RENDERING_LOG__ !== false) {
+        try { 
+          // eslint-disable-next-line no-console
+          console.log("[TRACE-RENDER] (renderModalContent) Checking selection type for main branch..."); 
+        } catch(e){}
+      }
       // Top-level fallback for no/invalid selection
       if (
         !selectedRecording ||
         typeof selectedRecording !== "object" ||
         (Array.isArray(selectedRecording) && selectedRecording.length === 0)
       ) {
+        if (window && window.__REACT_RENDERING_LOG__ !== false) {
+          try { 
+            // eslint-disable-next-line no-console
+            console.warn("[TRACE-RENDER] (renderModalContent fallback) No valid selectedRecording. Returning fallback modal.", {selectedRecording, recordings}); 
+          } catch(e){}
+        }
         // If there are no recordings, show a friendly action block
         if (!Array.isArray(recordings) || recordings.length === 0) {
           return (
@@ -332,6 +370,12 @@ function NavBar() {
 
       // If YouTube ID is invalid, fallback UI
       if (!videoId) {
+        if (window && window.__REACT_RENDERING_LOG__ !== false) {
+          try { 
+            // eslint-disable-next-line no-console
+            console.warn("[TRACE-RENDER] (renderModalContent fallback) YouTube ID is invalid or not found.", selectedRecording?.karaokeYoutubeUrl); 
+          } catch(e){}
+        }
         return (
           <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
             Could not embed YouTube video for this recording.<br />
@@ -418,15 +462,20 @@ function NavBar() {
           </div>
         </>
       );
-      // Log what is being returned explicitly
       if (window && window.__REACT_RENDERING_LOG__ !== false) {
         try {
           // eslint-disable-next-line no-console
-          console.log("[DEBUG] renderModalContent returning modalContent as type:", typeof modalContent, modalContent);
+          console.log("[TRACE-RENDER] (renderModalContent) Returning main modalContent, type:", typeof modalContent, modalContent);
         } catch (e) {}
       }
       return modalContent;
     } catch (ex) {
+      if (window && window.__REACT_RENDERING_LOG__ !== false) {
+        try { 
+          // eslint-disable-next-line no-console
+          console.error("[ERROR] (renderModalContent catch block):", ex); 
+        } catch(e){}
+      }
       // Fallback if render throws for any reason: always a visible error block (never a raw object/array)
       return (
         <div style={{ color: "#ffa500", textAlign: "center", fontSize: "1.07rem", padding: 16 }}>
