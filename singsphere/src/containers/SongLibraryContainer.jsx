@@ -34,9 +34,9 @@ const MOCK_SONGS = [
   },
   {
     id: "5",
-    title: "Uptown Funk",
-    artist: "Mark Ronson ft. Bruno Mars",
-    album: "Uptown Special",
+    title: "Kaun Tujhe",
+    artist: "Palak Muchhal",
+    album: "M.S. Dhoni: The Untold Story",
     coverUrl: ""
   },
   {

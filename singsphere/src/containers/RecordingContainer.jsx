@@ -43,6 +43,8 @@ function RecordingContainer({ songId, title, youtubeUrl }) {
     // New mapping for Ennai Konjam Maatri
     "4": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
     "Ennai Konjam Maatri": "https://youtu.be/65XHQwfCOtw?si=bozKr1Vb_DwKmzx8",
+    "5": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe mapping
+    "Kaun Tujhe": "https://youtu.be/O0Ww71XgsdU?si=KQm2XjTb4M9VDyUE", // Kaun Tujhe mapping by title
     "7": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
     "Shape of You": "https://youtu.be/rI5HNCgpWNo?si=1SCyEa73AgMhV0rN",
   };
