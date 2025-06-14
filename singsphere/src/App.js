@@ -317,26 +317,20 @@ function NavBar() {
         );
       }
 
-      // Attempt to extract YouTube ID - always string type check
-      const videoId =
-        typeof selectedRecording.karaokeYoutubeUrl === "string"
-          ? extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl)
-          : null;
-
-      if (!videoId) {
-        return (
-          <div style={{ color: "var(--text-secondary)", fontSize: "1.12rem", textAlign: "center", margin: "18px 0" }}>
-            Could not embed YouTube video for this recording.<br />
-            {selectedRecording &&
-              selectedRecording.karaokeYoutubeUrl &&
-              typeof selectedRecording.karaokeYoutubeUrl === "string" &&
-              !extractYouTubeVideoId(selectedRecording.karaokeYoutubeUrl) ? (
-                <span style={{ color: "#FFA500" }}>Invalid YouTube URL.</span>
-            ) : null}
-          </div>
-        );
+      // Attempt to get audio blob for playback if available in localStorage.
+      // In this implementation, recordings are currently just metadata (see RecordingContainer.jsx how to persist actual blob for future).
+      // For demo: Retrieve the latest available recorded audio from a pseudo global (in a real app this would use a backend or indexedDB).
+      // We'll attempt to find a key like 'audioRecordingBlob_{songId}' in localStorage, or fallback.
+      let audioUrl = null;
+      if (selectedRecording.songId) {
+        audioUrl = localStorage.getItem("audioRecordingUrl_" + selectedRecording.songId);
+      }
+      // Fallback: try finding "audioRecordingUrl" (for global/non-song-specific recording)
+      if (!audioUrl) {
+        audioUrl = localStorage.getItem("audioRecordingUrl");
       }
 
+      // If recorded audio present, show audio player, else fallback message.
       const safeTitle =
         typeof selectedRecording.title === "string"
           ? selectedRecording.title
@@ -357,19 +351,34 @@ function NavBar() {
             })()
           : "";
 
-      // PATCH: Always wrap main modal content JSX in React.Fragment, ensure always valid JSX
       return (
         <React.Fragment>
-          <div style={{ width: "100%", aspectRatio: "16/9", maxWidth: 480, margin: "0 auto 18px auto" }}>
-            <iframe
-              title="Your Karaoke Recording"
-              width="100%"
-              height="100%"
-              style={{ width: "100%", height: "100%", border: 0, borderRadius: 9, background: "#000" }}
-              src={`https://www.youtube.com/embed/${videoId}?modestbranding=1&rel=0&controls=1&autoplay=1`}
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
+          <div style={{ width: "100%", maxWidth: 480, margin: "0 auto 18px auto" }}>
+            {audioUrl ? (
+              <audio controls src={audioUrl} style={{ width: "100%" }}>
+                Your browser does not support the audio element.
+              </audio>
+            ) : (
+              <div
+                style={{
+                  color: "#FFA500",
+                  fontSize: "1.08rem",
+                  textAlign: "center",
+                  minHeight: 53,
+                  padding: 14,
+                  background: "#212a38",
+                  borderRadius: 6,
+                  border: "1.5px solid #eee8",
+                  margin: "0 auto 12px",
+                }}
+              >
+                No audio recording found for this recording entry.<br />
+                You may need to record first or your browser may not preserve audio blobs long-term.<br />
+                <Link to="/record" className="btn btn-large" onClick={handleModalClose}>
+                  Record Now
+                </Link>
+              </div>
+            )}
           </div>
           <div style={{ fontWeight: 600, color: "#bfefff", fontSize: "1.08rem", textAlign: "center" }}>
             {safeTitle}
@@ -382,12 +391,14 @@ function NavBar() {
           <div style={{ color: "var(--text-secondary)", fontSize: ".96rem", textAlign: "center", margin: "6px 0" }}>
             Saved: {recordedAtDate}
           </div>
-          <div style={{ color: "#53ffee", fontSize: "0.98rem", textAlign: "center" }}>
-            <a
-              href={selectedRecording.karaokeYoutubeUrl}
-              style={{ textDecoration: "underline", color: "#53ffee" }}
-              target="_blank" rel="noopener noreferrer"
-            >View on YouTube</a>
+          {/* Example: filter and save/download UI (for demonstration, since no real save/download implemented) */}
+          <div style={{ margin: "15px auto 0 auto", textAlign: "center" }}>
+            <button className="btn" style={{ marginRight: 10, background: "var(--base-light)" }} disabled>
+              🎚️ Filters (coming soon)
+            </button>
+            <button className="btn" style={{ background: "#4A90E2", color: "#fff" }} disabled>
+              💾 Save Recording
+            </button>
           </div>
           <div style={{ marginTop: 13, textAlign: "center" }}>
             <Link
