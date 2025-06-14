@@ -569,16 +569,45 @@ function NavBar() {
         </h2>
         {/* Defensive: Never return a non-JSX object/array as modal content */}
         {(() => {
-          const modalContent = renderModalContent();
-          // If a plain object (not a valid React element), show an explicit fallback and log.
+          let modalContent = renderModalContent();
+
+          // Helper to check if value is a valid React element
+          function isReactElement(val) {
+            return (
+              typeof val === "object" &&
+              val !== null &&
+              !!val.$$typeof &&
+              (typeof val.$$typeof === "symbol" || typeof val.$$typeof === "number") // symbol recommended, but legacy cases may have number
+            );
+          }
+
+          // Helper to flatten deeply (in case .map or renderModalContent returns nested arrays accidentally)
+          function deepFlatten(arr) {
+            return Array.isArray(arr)
+              ? arr.reduce((acc, val) => acc.concat(deepFlatten(val)), [])
+              : [arr];
+          }
+
+          // If modalContent is an array, flatten deeply and filter out non-renderables except for primitives & valid ReactElement
+          if (Array.isArray(modalContent)) {
+            const flat = deepFlatten(modalContent)
+              .filter(
+                (item) =>
+                  item == null ||
+                  typeof item === "boolean" ||
+                  typeof item === "string" ||
+                  typeof item === "number" ||
+                  isReactElement(item)
+              );
+            return <React.Fragment>{flat}</React.Fragment>;
+          }
+
+          // If modalContent is a plain object (not array, not null, not a valid ReactElement), show fallback
           if (
             modalContent &&
             typeof modalContent === "object" &&
             !Array.isArray(modalContent) &&
-            !(
-              // React elements have a $$typeof property (symbol)
-              (modalContent.$$typeof && typeof modalContent.$$typeof === "symbol")
-            )
+            !isReactElement(modalContent)
           ) {
             if (window && window.__REACT_RENDERING_LOG__ !== false) {
               try {
@@ -586,23 +615,16 @@ function NavBar() {
                 console.error("[RUNTIME ERROR] Attempted to render a plain object as a React child in modal. Rendering fallback.", modalContent);
               } catch (e) {}
             }
-            // Always wrap fallback with a fragment, never a direct object
             return (
               <React.Fragment>
                 <div style={{ color: "#f00", textAlign: "center", padding: 18 }}>
-                  Internal error: Attempted to render a non-JSX object. Please reload or contact support.<br />
+                  Internal error: Attempted to render a non-JSX object as a React child.<br />
                   <small>(Defensive fallback fired)</small>
                 </div>
               </React.Fragment>
             );
           }
-          // If modalContent is an array (even if nested/jagged), always flatten once and wrap in fragment.
-          if (Array.isArray(modalContent)) {
-            // Flatten just one level to avoid accidental nested arrays from map/map etc.
-            const flatModalContent = modalContent.flat ? modalContent.flat() : [].concat(...modalContent);
-            return <React.Fragment>{flatModalContent}</React.Fragment>;
-          }
-          // In every remaining case, return as-is: must be valid React renderable (JSX, string, number, null).
+          // For primitives or valid ReactElement, return as is
           return modalContent;
         })()}
       </ReactModal>
