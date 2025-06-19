@@ -5,6 +5,10 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 
 import ReactModal from 'react-modal';
+import SongLibraryContainer from "./containers/SongLibraryContainer";
+import RecordingContainer from "./containers/RecordingContainer";
+import { useParams, useLocation } from "react-router-dom";
+import PlaybackContainer from "./containers/PlaybackContainer";
 
 /*
  * PUBLIC_INTERFACE
@@ -538,7 +542,7 @@ function Homepage() {
   );
 }
 
-import SongLibraryContainer from "./containers/SongLibraryContainer";
+
 
 // PUBLIC_INTERFACE
 function SongLibrary() {
@@ -546,8 +550,7 @@ function SongLibrary() {
   return <SongLibraryContainer />;
 }
 
-import RecordingContainer from "./containers/RecordingContainer";
-import { useParams, useLocation } from "react-router-dom";
+
 
 // PUBLIC_INTERFACE
 function Recording() {
@@ -564,7 +567,7 @@ function Recording() {
   return <RecordingContainer songId={songId} title={title} />;
 }
 
-import PlaybackContainer from "./containers/PlaybackContainer";
+
 
 // PUBLIC_INTERFACE
 function Playback() {
